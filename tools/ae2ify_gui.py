@@ -102,13 +102,18 @@ def draw_inset(image, box):
 
 
 def draw_slot(image, box):
-    """槽位：参考包口径 —— 18x18 格里放 16x16 的格子，
-    顶边 1px #9A9FB4，其余 #ADB0C4，格间自然留出 2px 面板色。"""
+    """槽位：最外圈 1px 纯白，内部 16x16 —— 顶行 1px #9A9FB4 投影 + #ADB0C4 主体。
+    相邻槽位各贡献 1px 白圈，合起来就是 2px 白格网。"""
     x0, y0, x1, y1 = box
     pixels = image.load()
-    for y in range(y0 + 1, y1 - 1):
-        for x in range(x0 + 1, x1 - 1):
-            pixels[x, y] = (RING if y == y0 + 1 else INSET) + (255,)
+    for y in range(y0, y1):
+        for x in range(x0, x1):
+            if x == x0 or y == y0 or x == x1 - 1 or y == y1 - 1:
+                pixels[x, y] = HIGHLIGHT + (255,)
+            elif y == y0 + 1:
+                pixels[x, y] = RING + (255,)
+            else:
+                pixels[x, y] = INSET + (255,)
 
 
 def components(alpha):
