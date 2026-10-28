@@ -147,30 +147,41 @@ def components(alpha):
 
 
 def find_slots(image):
+    """槽位：找 #8B8B8B 的连通域。覆盖普通 16x16 格子与 22x22 的输出大槽，
+    只要形状接近正方形、内部基本填满，就按 18x18 / 24x24 的外框返回。"""
     px = image.load()
     width, height = image.size
+    seen = bytearray(width * height)
     slots = []
-    for y in range(1, height - 17):
-        for x in range(1, width - 17):
-            if px[x, y][:3] != SLOT_FILL or px[x, y][3] == 0:
+    for y in range(height):
+        for x in range(width):
+            if seen[y * width + x] or px[x, y][:3] != SLOT_FILL or px[x, y][3] == 0:
                 continue
-            if px[x - 1, y - 1][:3] not in ((55, 55, 55), (85, 85, 85)):
+            stack = [(x, y)]
+            seen[y * width + x] = 1
+            minx = maxx = x
+            miny = maxy = y
+            count = 0
+            while stack:
+                cx, cy = stack.pop()
+                count += 1
+                minx, maxx = min(minx, cx), max(maxx, cx)
+                miny, maxy = min(miny, cy), max(maxy, cy)
+                for nx, ny in ((cx + 1, cy), (cx - 1, cy), (cx, cy + 1), (cx, cy - 1)):
+                    if 0 <= nx < width and 0 <= ny < height:
+                        idx = ny * width + nx
+                        if not seen[idx] and px[nx, ny][:3] == SLOT_FILL and px[nx, ny][3] > 0:
+                            seen[idx] = 1
+                            stack.append((nx, ny))
+            w, h = maxx - minx + 1, maxy - miny + 1
+            if w < 14 or h < 14 or abs(w - h) > 4:
                 continue
-            ok = True
-            for yy in range(y, y + 16):
-                for xx in range(x, x + 16):
-                    if px[xx, yy][:3] != SLOT_FILL or px[xx, yy][3] == 0:
-                        ok = False
-                        break
-                if not ok:
-                    break
-            if ok:
-                slots.append((x - 1, y - 1, x + 17, y + 17))
-    unique = []
-    for box in slots:
-        if not any(abs(box[0] - u[0]) < 9 and abs(box[1] - u[1]) < 9 for u in unique):
-            unique.append(box)
-    return unique
+            if count < 0.85 * w * h:
+                continue
+            if minx < 1 or miny < 1 or maxx + 2 >= width or maxy + 2 >= height:
+                continue
+            slots.append((minx - 1, miny - 1, maxx + 2, maxy + 2))
+    return slots
 
 
 def find_insets(image):
@@ -222,7 +233,10 @@ def convert_screen(image, flat=False):
                     count += 1
         if count > 0.5 * area:
             inset_boxes.append(box)
+    slim_boxes = [b for b in boxes if (b[2] - b[0]) < 8 or (b[3] - b[1]) < 8]
     for box in boxes:
+        if box in slim_boxes:
+            continue  # 细条是装饰（彩色条/分隔条），只做调色，不套边框
         if box in inset_boxes:
             draw_inset(out, box)
         else:
@@ -236,8 +250,18 @@ def convert_screen(image, flat=False):
                 return True
         return False
 
+    def clamp_to_component(box):
+        for cb in boxes:
+            if cb[0] - 1 <= box[0] and cb[1] - 1 <= box[1] and box[2] <= cb[2] + 1 and box[3] <= cb[3] + 1:
+                return (max(box[0], cb[0] + 2), max(box[1], cb[1] + 2),
+                        min(box[2], cb[2] - 2), min(box[3], cb[3] - 2))
+        return box
+
     for box in insets:
         if inside_inset_component(box):
+            continue
+        box = clamp_to_component(box)
+        if box[2] - box[0] < 4 or box[3] - box[1] < 4:
             continue
         draw_inset(out, box)
     for box in slots:
