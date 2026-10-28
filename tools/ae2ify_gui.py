@@ -36,11 +36,14 @@ FILL = (203, 204, 212)
 RING = (154, 159, 180)
 INSET = (173, 176, 196)
 MID = (135, 143, 165)
+MIDBODY = (188, 191, 205)
 
 GRAYS = {
     (0, 0, 0): OUTLINE,
     (55, 55, 55): RING,
     (85, 85, 85): MID,
+    (98, 98, 98): MIDBODY,
+    (103, 103, 103): MIDBODY,
     (129, 129, 129): RING,
     (139, 139, 139): INSET,
     (198, 198, 198): FILL,
@@ -56,6 +59,50 @@ FRAME_COLORS = {
 SLOT_FILL = (139, 139, 139)
 PANEL_FILL = (198, 198, 198)
 INSET_FILL = (219, 219, 219)
+
+
+# AE2 灰阶梯度（按亮度升序），用于把一张图自身的灰阶按顺序摊到这套梯度上，
+# 避免 disabled 这类深灰字形被 nearest 映射压成和底色一样的值。
+LADDER = [
+    (65, 63, 84),    # 描边
+    (135, 143, 165),  # 中间调
+    (154, 159, 180),  # 深圈
+    (173, 176, 196),  # 凹陷填充
+    (188, 191, 205),  # 中间体色
+    (203, 204, 212),  # 面板填充
+    (242, 242, 242),  # 高光
+]
+
+
+def build_gray_map(image):
+    """按绝对亮度把图内灰阶落到 AE2 梯度上（不做拉伸）。
+
+    拉伸会把 disabled 这类整体偏暗的件拉成高光，观感反而更亮；
+    按绝对亮度落档能保留"禁用态更暗"的语义。
+    """
+    anchors = [
+        (30, (65, 63, 84)),     # 描边 / 最暗
+        (60, (154, 159, 180)),  # 深圈
+        (90, (135, 143, 165)),  # 中间调（深色字形）
+        (120, (173, 176, 196)),  # 凹陷填充
+        (160, (188, 191, 205)),  # 中间体色（139 这类底板）
+        (230, (203, 204, 212)),  # 面板填充
+        (255, (242, 242, 242)),  # 高光
+    ]
+    px = image.load()
+    values = {
+        px[x, y][0]
+        for y in range(image.height)
+        for x in range(image.width)
+        if px[x, y][3] > 0 and max(px[x, y][:3]) - min(px[x, y][:3]) <= TOLERANCE
+    }
+    mapping = {}
+    for v in values:
+        for threshold, target in anchors:
+            if v <= threshold:
+                mapping[v] = target
+                break
+    return mapping
 
 
 def map_gray(rgb):
@@ -327,16 +374,23 @@ def convert_sprite(image, rel):
         return out
     if Path(rel).name.startswith("generic_small_button"):
         return convert_button(image, Path(rel).name)
+    if rel.endswith("side_button/base.png"):
+        return convert_button(image, "generic_small_button.png")
     # 面板类 sprite（预览行、请求列表、列表底）没有槽位，但需要结构重绘：
     # 用尺寸区分 —— 小图（<=26px）是图标，走调色；大图走面板/内嵌件重绘。
     if max(image.size) >= 40:
         return convert_screen(image, flat=Path(rel).name == "requests.png")
     out = image.copy()
     px = out.load()
+    adaptive = build_gray_map(image)
     for y in range(out.height):
         for x in range(out.width):
             r, g, b, a = px[x, y]
-            if a != 0:
+            if a == 0:
+                continue
+            if max(r, g, b) - min(r, g, b) <= TOLERANCE and r in adaptive:
+                px[x, y] = adaptive[r] + (a,)
+            else:
                 px[x, y] = map_gray((r, g, b)) + (a,)
     return out
 
