@@ -1,0 +1,6 @@
+accessWidener	v2	named
+
+# 1.21.1 mojmap 里 hoveredSlot 是 protected 且无公开 getter。
+# 用 AW 而不是 mixin accessor：AW 由 loom 在构建时从 named 重映射到 intermediary，
+# 不需要 mixin refmap（本项目没有启用 mixin 注解处理器）。
+accessible	field	net/minecraft/client/gui/screens/inventory/AbstractContainerScreen	hoveredSlot	Lnet/minecraft/world/inventory/Slot;

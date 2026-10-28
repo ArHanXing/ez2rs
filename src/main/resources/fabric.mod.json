@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "id": "ez2rs",
+  "version": "${version}",
+  "name": "EZ2RS",
+  "description": "Refined Storage 2 addon: missing ingredients pinned to the top of the autocrafting preview, and an ExtendedAE style pattern input/output preview bound to a key.",
+  "authors": [
+    "deepseek"
+  ],
+  "license": "MIT",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "ar.hxi.ez2rs.Ez2rs"
+    ],
+    "client": [
+      "ar.hxi.ez2rs.client.Ez2rsClient"
+    ]
+  },
+  "mixins": [
+    "ez2rs.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=0.16.0",
+    "minecraft": "~1.21.1",
+    "java": ">=21",
+    "fabric-api": "*",
+    "refinedstorage": ">=2.0.0 <3.0.0"
+  },
+  "accessWidener": "ez2rs.accesswidener"
+}

@@ -1,0 +1,70 @@
+plugins {
+    id 'net.fabricmc.fabric-loom-remap' version "1.17.19"
+    id 'maven-publish'
+}
+
+group = "ar.hxi.ez2rs"
+version = "0.1.0"
+
+repositories {
+    // Refined Storage 2.x 的 Fabric 产物与其运行期依赖发布在 CreeperHost maven。
+    maven {
+        name = "CreeperHost"
+        url = "https://maven.creeperhost.net"
+    }
+    // RS2 运行期还依赖 cloth-config（正式环境由 RS2 jar 内的嵌套 jar 提供，dev 运行需要显式声明）。
+    maven {
+        name = "Shedaniel"
+        url = "https://maven.shedaniel.me/"
+    }
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${minecraft_version}"
+    // 官方 Mojang 映射（mojmap）：Fabric 1.x 时代全用 mojmap，不用 yarn。
+    // 注意：mojmap 工程里类名是 BuiltInRegistries/Item.Properties/CommandSourceStack 等，
+    // 与社区教程常见的 Yarn 名（Registries/Item.Settings/ServerCommandSource）不同，勿混用。
+    mappings loom.officialMojangMappings()
+    modImplementation "net.fabricmc:fabric-loader:${loader_version}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${fabric_api_version}"
+
+    // Refined Storage 2.x 的 Fabric 产物（已内联 common 代码）。
+    // transitive = false：RS2 的 POM 传递依赖（cloth-config / teamreborn energy / modmenu）
+    // 运行时由 RS2 jar 内的嵌套 jar 提供，编译期用不到，避免为此再引入三个仓库。
+    modImplementation("com.refinedmods.refinedstorage:refinedstorage-fabric:${refinedstorage_version}") {
+        transitive = false
+    }
+
+    // RS2 的运行期依赖：正式环境由 RS2 jar 内的嵌套 jar 提供，dev 运行（runClient/runServer）
+    // 需要显式声明，否则 loader 报 cloth-config2 / team_reborn_energy 缺失。
+    // 这两个依赖只用于开发运行，不会打进本模组的 jar。
+    modImplementation("me.shedaniel.cloth:cloth-config-fabric:${cloth_config_version}") {
+        exclude group: "net.fabricmc.fabric-api"
+    }
+    modImplementation("teamreborn:energy:${energy_version}") {
+        exclude group: "net.fabricmc.fabric-api"
+    }
+}
+
+// Access widener：把 1.21.1 mojmap 里 protected 的 AbstractContainerScreen#hoveredSlot
+// 变成可读，供「按 P 预览样板」定位鼠标下的槽位。loom 会在构建时把它从 named 重映射到
+// intermediary 并写进 jar（fabric.mod.json 里的 accessWidener 字段指向同一个文件）。
+loom {
+    accessWidenerPath = file("src/main/resources/ez2rs.accesswidener")
+}
+
+processResources {
+    // 把 Gradle version 展开进 fabric.mod.json 的 ${version}。
+    filesMatching('fabric.mod.json') {
+        expand "version": version
+    }
+}
+
+// 目标 Java 版本用 toolchain 声明：环境 JDK 低于目标（例如环境是 17、目标是 21）时，
+// 只有 toolchain 会让 foojay 自动 provision 对应 JDK，否则 javac 报「不支持发行版本」。
+java {
+    withSourcesJar()
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}

@@ -1,0 +1,8 @@
+.gradle/
+build/
+run/
+.cache/
+.rs2src/
+.idea/
+*.iml
+.ae2guiext/

@@ -1,0 +1,12 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "ar.hxi.ez2rs.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "PreviewMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
