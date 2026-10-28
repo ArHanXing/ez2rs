@@ -1,5 +1,6 @@
 {
   "key.categories.ez2rs": "EZ2RS",
   "key.ez2rs.pattern_preview": "Preview pattern",
-  "gui.ez2rs.pattern_preview.byproducts": "Byproducts"
+  "gui.ez2rs.pattern_preview.byproducts": "Byproducts",
+  "resourcepack.ez2rs.ae2_gui": "EZ2RS — AE2 style GUI"
 }

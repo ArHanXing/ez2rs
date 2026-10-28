@@ -21,6 +21,8 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
@@ -45,9 +47,26 @@ public class Ez2rsClient implements ClientModInitializer {
 
     @Override
     public void onInitializeClient() {
+        registerGuiPack();
         ScreenEvents.AFTER_INIT.register((client, screen, scaledWidth, scaledHeight) ->
             ScreenKeyboardEvents.allowKeyPress(screen).register((s, keyCode, scanCode, modifiers) ->
                 !tryOpenPreview(s, keyCode, scanCode)));
+    }
+
+    /**
+     * 内置资源包：把 RS2 的 GUI 换成 AE2 1.21 风格。
+     * 默认不启用（NORMAL，玩家可在「选项 → 资源包」里打开），避免强行改掉别人的界面观感。
+     */
+    private static void registerGuiPack() {
+        FabricLoader.getInstance().getModContainer("ez2rs").ifPresent(container ->
+            ResourceManagerHelper.registerBuiltinResourcePack(
+                ResourceLocation.fromNamespaceAndPath("ez2rs", "ae2_gui"),
+                container,
+                Component.translatable("resourcepack.ez2rs.ae2_gui"),
+                Boolean.getBoolean("ez2rs.pack.enabled")
+                    ? ResourcePackActivationType.ALWAYS_ENABLED
+                    : ResourcePackActivationType.NORMAL
+            ));
     }
 
     private static boolean tryOpenPreview(final Screen screen, final int keyCode, final int scanCode) {
