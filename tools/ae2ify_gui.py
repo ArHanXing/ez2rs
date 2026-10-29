@@ -24,7 +24,7 @@ AE2 参考件（.ae2guiext/assets/ldlib/textures/gui/）：
 import sys
 from pathlib import Path
 
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFilter
 
 ROOT = Path(__file__).resolve().parent.parent
 SRC = ROOT / ".rs2src/refinedstorage-common/src/main/resources/assets/refinedstorage/textures/gui"
@@ -39,7 +39,7 @@ MID = (135, 143, 165)
 MIDBODY = (188, 191, 205)
 
 GRAYS = {
-    (0, 0, 0): OUTLINE,
+    (0, 0, 0): MID,
     (55, 55, 55): RING,
     (85, 85, 85): MID,
     (98, 98, 98): MIDBODY,
@@ -133,9 +133,10 @@ def draw_panel(image, box, flat=False):
                 pixels[x, y] = FILL + (255,)
 
 
-def draw_inset(image, box):
+def draw_inset(image, box, fill=None):
     """选框（搜索框 / 列表底 / 槽位）：外圈 1px 白，主体中深灰，
-    主体顶行 1px 深灰当作投影，让凹陷感来自"顶部的阴影"而不是四边描边。"""
+    主体顶行 1px 深灰当作投影，让凹陷感来自"顶部的阴影"而不是四边描边。
+    fill 可覆盖主体色：含槽位的内嵌区用面板色打底，槽位主体才分得出来。"""
     x0, y0, x1, y1 = box
     pixels = image.load()
     for y in range(max(y0, 0), min(y1, image.height)):
@@ -145,7 +146,7 @@ def draw_inset(image, box):
             elif y == y0 + 1:
                 pixels[x, y] = RING + (255,)
             else:
-                pixels[x, y] = INSET + (255,)
+                pixels[x, y] = (fill or INSET) + (255,)
 
 
 def draw_slot(image, box):
@@ -310,9 +311,19 @@ def convert_screen(image, flat=False):
         box = clamp_to_component(box)
         if box[2] - box[0] < 4 or box[3] - box[1] < 4:
             continue
-        draw_inset(out, box)
+        # 内部含槽位的内嵌区（槽位网格的底）用面板色打底，否则槽位主体和内嵌区同色糊成一片
+        contains_slots = sum(
+            1 for sb in slots
+            if box[0] <= sb[0] and box[1] <= sb[1] and sb[2] <= box[2] and sb[3] <= box[3]
+        ) >= 2
+        draw_inset(out, box, fill=FILL if contains_slots else None)
     for box in slots:
         draw_slot(out, box)
+
+    protected = Image.new("L", image.size, 0)
+    pdraw = ImageDraw.Draw(protected)
+    for bx in slots + insets:
+        pdraw.rectangle([bx[0] - 2, bx[1] - 2, bx[2] + 1, bx[3] + 1], fill=255)
 
     def covered(x, y):
         for bx in insets + slots + inset_boxes:
@@ -320,14 +331,13 @@ def convert_screen(image, flat=False):
                 return True
         return False
 
+    # 旧图的"边框带"= 靠近任何透明区域的像素（外轮廓、内部缺口、台阶、圆角都算）。
+    # 只按 bbox 外圈判断会漏掉缺口/台阶，旧描边会被当成结构贴回来，表现为"格子有花边"。
+    transparent = image.getchannel("A").point(lambda v: 255 if v == 0 else 0)
+    edge_band = transparent.filter(ImageFilter.MaxFilter(7))
+
     def in_frame_band(x, y):
-        """面板边框带。旧图的边框是 1px 黑 + 2~3px 白（还带圆角斜切），
-        这圈里的"框线颜色"一律不粘贴，否则方角会被旧像素重新盖成圆角。"""
-        for bx in boxes:
-            if bx[0] <= x < bx[2] and bx[1] <= y < bx[3]:
-                if x < bx[0] + 4 or y < bx[1] + 4 or x >= bx[2] - 4 or y >= bx[3] - 4:
-                    return True
-        return False
+        return edge_band.getpixel((x, y)) > 0
 
     src = image.load()
     dst = out.load()
@@ -339,7 +349,7 @@ def convert_screen(image, flat=False):
             rgb = (r, g, b)
             if covered(x, y) or rgb in (PANEL_FILL, INSET_FILL):
                 continue
-            if in_frame_band(x, y) and rgb in FRAME_COLORS:
+            if rgb in FRAME_COLORS and (in_frame_band(x, y) or protected.getpixel((x, y)) > 0):
                 continue
             dst[x, y] = map_gray(rgb) + (a,)
     return out
@@ -367,6 +377,33 @@ def convert_button(image, name):
     return out
 
 
+def convert_sheet(image):
+    """槽位贴图（合成矩阵 / 处理矩阵这类）：透明底上只有槽位和字形。
+    只把检测到的槽位按 AE2 规格重绘，其余像素调色，透明区保持透明。"""
+    out = image.copy()
+    px = out.load()
+    adaptive = build_gray_map(image)
+    for y in range(out.height):
+        for x in range(out.width):
+            r, g, b, a = px[x, y]
+            if a == 0:
+                continue
+            if max(r, g, b) - min(r, g, b) <= TOLERANCE and r in adaptive:
+                px[x, y] = adaptive[r] + (a,)
+            else:
+                px[x, y] = map_gray((r, g, b)) + (a,)
+    for box in find_slots(image):
+        draw_slot(out, box)
+    return out
+
+
+def opaque_ratio(image):
+    px = image.load()
+    total = image.width * image.height
+    count = sum(1 for y in range(image.height) for x in range(image.width) if px[x, y][3] > 0)
+    return count / total
+
+
 def convert_sprite(image, rel):
     if Path(rel).name in ("slot.png", "large_slot.png"):
         out = Image.new("RGBA", image.size, (0, 0, 0, 0))
@@ -378,8 +415,10 @@ def convert_sprite(image, rel):
         return convert_button(image, "generic_small_button.png")
     # 面板类 sprite（预览行、请求列表、列表底）没有槽位，但需要结构重绘：
     # 用尺寸区分 —— 小图（<=26px）是图标，走调色；大图走面板/内嵌件重绘。
-    if max(image.size) >= 40:
+    if max(image.size) >= 40 and opaque_ratio(image) >= 0.95:
         return convert_screen(image, flat=Path(rel).name == "requests.png")
+    if find_slots(image):
+        return convert_sheet(image)
     out = image.copy()
     px = out.load()
     adaptive = build_gray_map(image)
