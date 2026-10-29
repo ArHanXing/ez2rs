@@ -1,0 +1,25 @@
+diff --git a/common/src/main/java/com/ultramega/refinedfluidsubstitution/common/mixin/PatternOutputContainerMixin.java b/common/src/main/java/com/ultramega/refinedfluidsubstitution/common/mixin/PatternOutputContainerMixin.java
+index 92e75b1..1b1e689 100644
+--- a/common/src/main/java/com/ultramega/refinedfluidsubstitution/common/mixin/PatternOutputContainerMixin.java
++++ b/common/src/main/java/com/ultramega/refinedfluidsubstitution/common/mixin/PatternOutputContainerMixin.java
+@@ -12,7 +12,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+ 
+ @Mixin(targets = "com.refinedmods.refinedstorage.common.autocrafting.patterngrid.PatternOutputContainer", remap = false)
+ public abstract class PatternOutputContainerMixin {
+-    @Inject(method = "canPlaceItem", at = @At("HEAD"), cancellable = true)
++    @Inject(method = "canPlaceItem", at = @At("HEAD"), cancellable = true, remap = true)
+     private void acceptMappedFluidSubstitutionPattern(final int slot,
+                                                       final ItemStack stack,
+                                                       final CallbackInfoReturnable<Boolean> cir) {
+diff --git a/common/src/main/resources/refinedfluidsubstitution.mixins.json b/common/src/main/resources/refinedfluidsubstitution.mixins.json
+index 36fc97c..1ff1d20 100644
+--- a/common/src/main/resources/refinedfluidsubstitution.mixins.json
++++ b/common/src/main/resources/refinedfluidsubstitution.mixins.json
+@@ -1,6 +1,7 @@
+ {
+   "required": true,
+   "minVersion": "0.8",
++  "refmap": "refinedfluidsubstitution-fabric-refmap.json",
+   "package": "com.ultramega.refinedfluidsubstitution.common.mixin",
+   "client": [
+     "CraftingPatternClientTooltipComponentMixin"
