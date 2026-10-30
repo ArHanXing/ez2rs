@@ -4,9 +4,16 @@
   "package": "ar.hxi.ez2rs.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
-    "PreviewMixin"
+    "PreviewMixin",
+    "AbstractBaseContainerMenuAccessor",
+    "NetworkItemContextImplMixin",
+    "InventorySlotReferenceInvoker"
   ],
   "injectors": {
     "defaultRequire": 1
-  }
+  },
+  "client": [
+    "AbstractGridScreenMixin",
+    "AutocraftingMonitorScreenMixin"
+  ]
 }

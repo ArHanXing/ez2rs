@@ -8,3 +8,5 @@ run/
 .ae2guiext/
 rfsrc/
 testserver/
+refs/
+libs/

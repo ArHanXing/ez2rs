@@ -2,5 +2,15 @@
   "key.categories.ez2rs": "EZ2RS",
   "key.ez2rs.pattern_preview": "预览样板",
   "gui.ez2rs.pattern_preview.byproducts": "副产品",
-  "resourcepack.ez2rs.ae2_gui": "EZ2RS — AE2 风格界面"
+  "resourcepack.ez2rs.ae2_gui": "EZ2RS — AE2 风格界面",
+  "item.ez2rs.wireless_universal_grid": "通用终端",
+  "gui.ez2rs.universal_terminal.cycle": "当前终端：%s（点击切换）",
+  "gui.ez2rs.universal_terminal.type.grid": "终端",
+  "gui.ez2rs.universal_terminal.type.crafting_grid": "合成终端",
+  "gui.ez2rs.universal_terminal.type.autocrafting_monitor": "自动合成监视器",
+  "gui.ez2rs.universal_terminal.button": "通用终端",
+  "gui.ez2rs.universal_terminal.current": "当前：%s",
+  "gui.ez2rs.universal_terminal.click_to_cycle": "点击切换终端",
+  "tooltip.ez2rs.universal_terminal.empty": "未编程 —— 与无线终端合成以添加页面",
+  "gui.ez2rs.universal_terminal.page": "第 %s / %s 页"
 }

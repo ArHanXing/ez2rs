@@ -2,5 +2,15 @@
   "key.categories.ez2rs": "EZ2RS",
   "key.ez2rs.pattern_preview": "Preview pattern",
   "gui.ez2rs.pattern_preview.byproducts": "Byproducts",
-  "resourcepack.ez2rs.ae2_gui": "EZ2RS — AE2 style GUI"
+  "resourcepack.ez2rs.ae2_gui": "EZ2RS — AE2 style GUI",
+  "item.ez2rs.wireless_universal_grid": "Wireless Universal Terminal",
+  "gui.ez2rs.universal_terminal.cycle": "Terminal: %s (click to switch)",
+  "gui.ez2rs.universal_terminal.type.grid": "Grid",
+  "gui.ez2rs.universal_terminal.type.crafting_grid": "Crafting Grid",
+  "gui.ez2rs.universal_terminal.type.autocrafting_monitor": "Autocrafting Monitor",
+  "gui.ez2rs.universal_terminal.button": "Universal Terminal",
+  "gui.ez2rs.universal_terminal.current": "Current: %s",
+  "gui.ez2rs.universal_terminal.click_to_cycle": "Click to switch terminal",
+  "tooltip.ez2rs.universal_terminal.empty": "Unprogrammed - craft it with a wireless terminal to add a page",
+  "gui.ez2rs.universal_terminal.page": "Page %s / %s"
 }

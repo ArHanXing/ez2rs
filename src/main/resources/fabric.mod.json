@@ -15,6 +15,9 @@
     ],
     "client": [
       "ar.hxi.ez2rs.client.Ez2rsClient"
+    ],
+    "refinedstorage_plugin": [
+      "ar.hxi.ez2rs.Ez2rs"
     ]
   },
   "mixins": [
@@ -25,7 +28,8 @@
     "minecraft": "~1.21.1",
     "java": ">=21",
     "fabric-api": "*",
-    "refinedstorage": ">=2.0.0 <3.0.0"
+    "refinedstorage": ">=2.0.0 <3.0.0",
+    "refinedstorage_quartz_arsenal": ">=1.0.0"
   },
   "accessWidener": "ez2rs.accesswidener"
 }

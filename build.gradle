@@ -38,6 +38,11 @@ dependencies {
     // RS2 的运行期依赖：正式环境由 RS2 jar 内的嵌套 jar 提供，dev 运行（runClient/runServer）
     // 需要显式声明，否则 loader 报 cloth-config2 / team_reborn_energy 缺失。
     // 这两个依赖只用于开发运行，不会打进本模组的 jar。
+    // 石英兵工厂（硬依赖）：提供无线合成终端，通用终端直接复用它。
+    // 用本地 jar 而不是 Modrinth maven 坐标：Modrinth 的产物没有 loom 的 mod 变体元数据，
+    // 走 maven 时 loom 不会重映射，dev 运行时 loader 会认为没装这个模组。
+    modImplementation files("libs/refined-storage-quartz-arsenal-fabric-${quartz_arsenal_version}.jar")
+
     modImplementation("me.shedaniel.cloth:cloth-config-fabric:${cloth_config_version}") {
         exclude group: "net.fabricmc.fabric-api"
     }
