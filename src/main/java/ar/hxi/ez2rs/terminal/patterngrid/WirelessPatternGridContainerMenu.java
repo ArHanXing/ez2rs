@@ -272,6 +272,18 @@ public class WirelessPatternGridContainerMenu extends PatternGridContainerMenu {
             final int index = i;
             state.outputs().get(i).ifPresent(amount -> output.set(index, amount));
         }
+        // 处理矩阵的显示走 ResourceSlot 自己的广播，服务端改完容器不会自动下发，
+        // 这里主动推一次，否则要等下一次 broadcastChanges 才看得到。
+        broadcastResourceSlots();
+    }
+
+    private void broadcastResourceSlots() {
+        if (!(playerInventory.player instanceof net.minecraft.server.level.ServerPlayer serverPlayer)) {
+            return;
+        }
+        for (final var resourceSlot : getResourceSlots()) {
+            resourceSlot.broadcastChanges(serverPlayer);
+        }
     }
 
     private void copyStonecutter(final ItemStack stack) {
