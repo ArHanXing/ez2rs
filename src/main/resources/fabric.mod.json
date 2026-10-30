@@ -18,6 +18,9 @@
     ],
     "refinedstorage_plugin": [
       "ar.hxi.ez2rs.Ez2rs"
+    ],
+    "emi": [
+      "ar.hxi.ez2rs.client.emi.Ez2rsEmiPlugin"
     ]
   },
   "mixins": [
@@ -29,7 +32,9 @@
     "java": ">=21",
     "fabric-api": "*",
     "refinedstorage": ">=2.0.0 <3.0.0",
-    "refinedstorage_quartz_arsenal": ">=1.0.0"
+    "refinedstorage_quartz_arsenal": ">=1.0.0",
+    "refinedstorage_emi_integration": ">=1.0.0",
+    "emi": ">=1.1.0"
   },
   "accessWidener": "ez2rs.accesswidener"
 }
