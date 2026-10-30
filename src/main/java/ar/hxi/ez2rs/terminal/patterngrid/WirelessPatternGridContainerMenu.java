@@ -347,6 +347,15 @@ public class WirelessPatternGridContainerMenu extends PatternGridContainerMenu {
         if (playerInventory.player.level().isClientSide()) {
             return;
         }
+        // 父类 AbstractResourceContainerMenu 的 player 字段在我们这条构造路径上是 null
+        // （PatternGridContainerMenu 的 GridData 构造器不往上传 player），
+        // 它的广播循环因此整段被跳过，处理矩阵永远推不到客户端。
+        // 这里用 playerInventory.player 自己推一遍。
+        if (playerInventory.player instanceof net.minecraft.server.level.ServerPlayer serverPlayer) {
+            for (final var resourceSlot : getResourceSlots()) {
+                resourceSlot.broadcastChanges(serverPlayer);
+            }
+        }
         final List<String> snapshot = snapshotDraft();
         if (snapshot.equals(lastDraftSnapshot)) {
             return;
