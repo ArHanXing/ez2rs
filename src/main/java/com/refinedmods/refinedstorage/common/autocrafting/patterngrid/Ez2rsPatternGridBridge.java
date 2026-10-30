@@ -44,6 +44,12 @@ public final class Ez2rsPatternGridBridge {
         return container instanceof StonecutterInputContainer stonecutter && stonecutter.hasSelectedRecipe();
     }
 
+    /** 样板类型属性（属性类型类本身是包私有的）。 */
+    public static com.refinedmods.refinedstorage.common.support.containermenu.PropertyType<PatternType>
+        patternTypeProperty() {
+        return PatternGridPropertyTypes.PATTERN_TYPE;
+    }
+
     /** 样板类型属性的 id（属性类型类本身是包私有的）。 */
     public static net.minecraft.resources.ResourceLocation patternTypePropertyId() {
         return PatternGridPropertyTypes.PATTERN_TYPE.id();

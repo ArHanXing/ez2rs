@@ -22,6 +22,7 @@ import com.refinedmods.refinedstorage.common.autocrafting.patterngrid.PatternGri
 import com.refinedmods.refinedstorage.common.autocrafting.patterngrid.PatternType;
 import com.refinedmods.refinedstorage.common.content.DataComponents;
 import com.refinedmods.refinedstorage.common.support.RecipeMatrix;
+import com.refinedmods.refinedstorage.common.support.containermenu.ServerProperty;
 import com.refinedmods.refinedstorage.common.support.resource.ItemResource;
 
 import net.minecraft.world.Container;
@@ -67,10 +68,26 @@ public class WirelessPatternGridContainerMenu extends PatternGridContainerMenu {
                                             final SlotReference slotReference,
                                             final boolean restore) {
         super(syncId, playerInventory, data);
-        // 父类的这个构造器注册的是 ClientProperty（面向纯客户端）；
-        // 服务端一侧必须是 ServerProperty，否则客户端改属性时
-        // AbstractBaseContainerMenu#receivePropertyChangeFromClient 会 ClassCastException。
-        // 所以这里把父类注册的那几个 property 换成服务端的可写版本。
+        // 父类构造器注册的是 ClientProperty，那是给纯客户端快照用的：
+        // 服务端那份 ClientProperty.value 永远不会被更新（set() 只在客户端调），
+        // 于是服务端读到的样板类型永远是初始值，编码出来的样板类型就永远不对。
+        //
+        // 这个构造器在客户端和服务端都会执行，所以必须按端区分：
+        //   服务端 -> ServerProperty（读我们的字段，接受客户端变更）
+        //   客户端 -> 保留父类的 ClientProperty（负责画界面并发 C2S 包）
+        // registerProperty 是 Map.put，同类型会被覆盖，替换是安全的。
+        if (!playerInventory.player.level().isClientSide()) {
+            registerProperty(new ServerProperty<>(
+                Ez2rsPatternGridBridge.patternTypeProperty(),
+                this::getDraftPatternType,
+                this::setDraftPatternType
+            ));
+            registerProperty(new ServerProperty<>(
+                com.refinedmods.refinedstorage.common.support.containermenu.PropertyTypes.FUZZY_MODE,
+                this::isDraftFuzzy,
+                this::setDraftFuzzy
+            ));
+        }
         this.slotReference = slotReference;
         this.disabledSlot = slotReference;
         final Player player = playerInventory.player;
@@ -84,6 +101,27 @@ public class WirelessPatternGridContainerMenu extends PatternGridContainerMenu {
         if (restore) {
             restoreFromItem(player);
         }
+    }
+
+    /** 样板类型的真实存储（服务端权威）。 */
+    private PatternType draftPatternType = PatternType.CRAFTING;
+    /** 模糊模式的真实存储（服务端权威）。 */
+    private boolean draftFuzzy;
+
+    private PatternType getDraftPatternType() {
+        return draftPatternType;
+    }
+
+    private void setDraftPatternType(final PatternType type) {
+        this.draftPatternType = type;
+    }
+
+    private boolean isDraftFuzzy() {
+        return draftFuzzy;
+    }
+
+    private void setDraftFuzzy(final boolean fuzzy) {
+        this.draftFuzzy = fuzzy;
     }
 
     /** 处理矩阵输入/输出、石板机输入：父类里的那两个字段是包私有类型，外部拿不到，这里自建一份。 */
@@ -104,12 +142,16 @@ public class WirelessPatternGridContainerMenu extends PatternGridContainerMenu {
         if (Ez2rsPatternGridBridge.patternTypePropertyId().equals(id)) {
             final PatternType[] values = PatternType.values();
             if (newValue >= 0 && newValue < values.length) {
-                self().ez2rs$setPatternType(values[newValue]);
+                // 写字段 + 让 DataSlot 变脏，原版就会把新值同步回客户端（按钮图标才会变）。
+                // 注意不能用 getProperty(...).set()：那是 ClientProperty 的路径，会再发一次 C2S 包。
+                // ServerProperty.get() 读的就是这个字段；原版每 tick 比对 DataSlot 的值，
+                // 字段一变就会把新值同步给客户端，按钮图标随之更新。
+                draftPatternType = values[newValue];
             }
             return;
         }
         if (Ez2rsPatternGridBridge.fuzzyModePropertyId().equals(id)) {
-            self().ez2rs$setFuzzyMode(newValue != 0);
+            draftFuzzy = newValue != 0;
             return;
         }
         super.receivePropertyChangeFromClient(id, newValue);
@@ -155,7 +197,7 @@ public class WirelessPatternGridContainerMenu extends PatternGridContainerMenu {
         }
         syncCrafting();
         syncSmithing();
-        final ItemStack result = switch (self().ez2rs$patternType()) {
+        final ItemStack result = switch (draftPatternType) {
             case CRAFTING -> createCraftingPattern();
             case PROCESSING -> createProcessingPattern();
             case STONECUTTER -> createStonecutterPattern(player);
@@ -177,7 +219,7 @@ public class WirelessPatternGridContainerMenu extends PatternGridContainerMenu {
         final ItemStack result = PatternGridBlockEntity.createPatternStack(PatternType.CRAFTING);
         result.set(
             DataComponents.INSTANCE.getCraftingPatternState(),
-            new CraftingPatternState(self().ez2rs$fuzzyMode(), crafting.getMatrix().asPositionedCraftInput())
+            new CraftingPatternState(draftFuzzy, crafting.getMatrix().asPositionedCraftInput())
         );
         return result;
     }
@@ -286,8 +328,8 @@ public class WirelessPatternGridContainerMenu extends PatternGridContainerMenu {
             Ez2rsTerminalContent.PATTERN_GRID_DRAFT,
             PatternGridDraft.capture(
                 player.level(),
-                self().ez2rs$patternType(),
-                self().ez2rs$fuzzyMode(),
+                draftPatternType,
+                draftFuzzy,
                 parentCraftingMatrix,
                 parentSmithingMatrix,
                 stonecutter,
@@ -309,8 +351,8 @@ public class WirelessPatternGridContainerMenu extends PatternGridContainerMenu {
         if (draft == null) {
             return;
         }
-        self().ez2rs$setPatternType(PatternGridDraft.patternType(draft));
-        self().ez2rs$setFuzzyMode(PatternGridDraft.fuzzy(draft));
+        draftPatternType = PatternGridDraft.patternType(draft);
+        draftFuzzy = PatternGridDraft.fuzzy(draft);
         PatternGridDraft.restore(
             draft,
             player.level(),
