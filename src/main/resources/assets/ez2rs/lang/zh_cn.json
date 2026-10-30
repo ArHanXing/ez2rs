@@ -13,5 +13,6 @@
   "gui.ez2rs.universal_terminal.click_to_cycle": "点击切换终端",
   "tooltip.ez2rs.universal_terminal.empty": "未编程 —— 与无线终端合成以添加页面",
   "gui.ez2rs.universal_terminal.page": "第 %s / %s 页",
-  "gui.ez2rs.universal_terminal.type.pattern_grid": "样板终端"
+  "gui.ez2rs.universal_terminal.type.pattern_grid": "样板终端",
+  "item.ez2rs.wireless_pattern_grid": "无线样板终端"
 }

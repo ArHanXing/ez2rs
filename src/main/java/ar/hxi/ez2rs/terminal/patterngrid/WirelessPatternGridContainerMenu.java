@@ -278,7 +278,8 @@ public class WirelessPatternGridContainerMenu extends PatternGridContainerMenu {
 
     private void persistToItem(final Player player) {
         final ItemStack stack = slotReference.resolve(player).orElse(ItemStack.EMPTY);
-        if (!(stack.getItem() instanceof ar.hxi.ez2rs.terminal.WirelessUniversalGridItem)) {
+        // 通用终端的样板页与独立「无线样板终端」都走同一套草稿组件
+        if (!ar.hxi.ez2rs.terminal.Ez2rsTerminalContent.isPatternGridCapable(stack)) {
             return;
         }
         stack.set(
@@ -300,7 +301,8 @@ public class WirelessPatternGridContainerMenu extends PatternGridContainerMenu {
 
     private void restoreFromItem(final Player player) {
         final ItemStack stack = slotReference.resolve(player).orElse(ItemStack.EMPTY);
-        if (!(stack.getItem() instanceof ar.hxi.ez2rs.terminal.WirelessUniversalGridItem)) {
+        // 通用终端的样板页与独立「无线样板终端」都走同一套草稿组件
+        if (!ar.hxi.ez2rs.terminal.Ez2rsTerminalContent.isPatternGridCapable(stack)) {
             return;
         }
         final net.minecraft.nbt.CompoundTag draft = stack.get(Ez2rsTerminalContent.PATTERN_GRID_DRAFT);

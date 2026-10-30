@@ -4,6 +4,7 @@ import ar.hxi.ez2rs.net.CycleUniversalTerminalPacket;
 import ar.hxi.ez2rs.terminal.Ez2rsMenus;
 import ar.hxi.ez2rs.terminal.Ez2rsRecipes;
 import ar.hxi.ez2rs.terminal.Ez2rsTerminalContent;
+import ar.hxi.ez2rs.terminal.WirelessPatternGridItem;
 import ar.hxi.ez2rs.terminal.WirelessUniversalGridItem;
 
 import com.refinedmods.refinedstorage.common.api.RefinedStorageApi;
@@ -17,6 +18,7 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.item.CreativeModeTab;
+import net.minecraft.world.item.Item;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import team.reborn.energy.api.EnergyStorage;
@@ -63,12 +65,15 @@ public class Ez2rs implements ModInitializer, RefinedStoragePlugin {
     }
 
     private static void registerContent() {
-        Ez2rsTerminalContent.setItem(
-            new DirectRegistryCallback<>(BuiltInRegistries.ITEM).register(
-                Ez2rsTerminalContent.WIRELESS_UNIVERSAL_GRID_ID,
-                WirelessUniversalGridItem::new
-            )
-        );
+        final DirectRegistryCallback<Item> registry = new DirectRegistryCallback<>(BuiltInRegistries.ITEM);
+        Ez2rsTerminalContent.setItem(registry.register(
+            Ez2rsTerminalContent.WIRELESS_UNIVERSAL_GRID_ID,
+            WirelessUniversalGridItem::new
+        ));
+        Ez2rsTerminalContent.setPatternGridItem(registry.register(
+            Ez2rsTerminalContent.WIRELESS_PATTERN_GRID_ID,
+            WirelessPatternGridItem::new
+        ));
     }
 
     /** 让通用终端拥有真正的物品电池（Team Reborn Energy），外部充电与能量条都靠它。 */
@@ -78,6 +83,11 @@ public class Ez2rs implements ModInitializer, RefinedStoragePlugin {
             (stack, context) -> new EnergyStorageAdapter(item.createEnergyStorage(stack), context),
             item
         );
+        final WirelessPatternGridItem patternGrid = Ez2rsTerminalContent.getPatternGridItem();
+        EnergyStorage.ITEM.registerForItems(
+            (stack, context) -> new EnergyStorageAdapter(patternGrid.createEnergyStorage(stack), context),
+            patternGrid
+        );
     }
 
     private static void registerCreativeModeTabListener(final RefinedStorageApi refinedStorageApi) {
@@ -85,7 +95,9 @@ public class Ez2rs implements ModInitializer, RefinedStoragePlugin {
             Registries.CREATIVE_MODE_TAB,
             refinedStorageApi.getCreativeModeTabId()
         );
-        ItemGroupEvents.modifyEntriesEvent(tab).register(entries ->
-            entries.accept(Ez2rsTerminalContent.getItem().createAtEnergyCapacity()));
+        ItemGroupEvents.modifyEntriesEvent(tab).register(entries -> {
+            entries.accept(Ez2rsTerminalContent.getItem().createAtEnergyCapacity());
+            entries.accept(Ez2rsTerminalContent.getPatternGridItem().createAtEnergyCapacity());
+        });
     }
 }

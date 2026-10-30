@@ -21,6 +21,8 @@ import net.minecraft.world.item.ItemStack;
 public final class Ez2rsTerminalContent {
     public static final ResourceLocation WIRELESS_UNIVERSAL_GRID_ID =
         ResourceLocation.fromNamespaceAndPath(Ez2rs.MOD_ID, "wireless_universal_grid");
+    public static final ResourceLocation WIRELESS_PATTERN_GRID_ID =
+        ResourceLocation.fromNamespaceAndPath(Ez2rs.MOD_ID, "wireless_pattern_grid");
 
     /** 已解锁的终端能力（页）。 */
     public static final DataComponentType<TerminalPages> PAGES =
@@ -44,6 +46,7 @@ public final class Ez2rsTerminalContent {
             .build();
 
     private static Supplier<WirelessUniversalGridItem> item;
+    private static Supplier<WirelessPatternGridItem> patternGridItem;
 
     private Ez2rsTerminalContent() {
     }
@@ -75,6 +78,23 @@ public final class Ez2rsTerminalContent {
             throw new IllegalStateException("Universal terminal item has not been registered yet");
         }
         return item.get();
+    }
+
+    public static void setPatternGridItem(final Supplier<WirelessPatternGridItem> supplier) {
+        patternGridItem = supplier;
+    }
+
+    public static WirelessPatternGridItem getPatternGridItem() {
+        if (patternGridItem == null) {
+            throw new IllegalStateException("Wireless pattern grid item has not been registered yet");
+        }
+        return patternGridItem.get();
+    }
+
+    /** 草稿组件对所有携带它的终端物品通用，不区分是通用终端还是独立样板终端。 */
+    public static boolean isPatternGridCapable(final ItemStack stack) {
+        return stack.getItem() instanceof WirelessUniversalGridItem
+            || stack.getItem() instanceof WirelessPatternGridItem;
     }
 
     public static ResourceKey<Item> itemKey() {
