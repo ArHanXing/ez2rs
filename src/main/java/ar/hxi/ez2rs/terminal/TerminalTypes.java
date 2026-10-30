@@ -12,6 +12,8 @@ public final class TerminalTypes {
         ResourceLocation.fromNamespaceAndPath("refinedstorage", "wireless_autocrafting_monitor");
     private static final ResourceLocation WIRELESS_CRAFTING_GRID =
         ResourceLocation.fromNamespaceAndPath("refinedstorage_quartz_arsenal", "wireless_crafting_grid");
+    private static final ResourceLocation PATTERN_GRID =
+        ResourceLocation.fromNamespaceAndPath("refinedstorage", "pattern_grid");
 
     private TerminalTypes() {
     }
@@ -23,6 +25,7 @@ public final class TerminalTypes {
                 BuiltInRegistries.ITEM.getKey(stack.getItem()).equals(WIRELESS_AUTOCRAFTING_MONITOR);
             case CRAFTING_GRID ->
                 BuiltInRegistries.ITEM.getKey(stack.getItem()).equals(WIRELESS_CRAFTING_GRID);
+            case PATTERN_GRID -> BuiltInRegistries.ITEM.getKey(stack.getItem()).equals(PATTERN_GRID);
         };
     }
 }

@@ -60,6 +60,47 @@ public class WirelessUniversalGridItem extends AbstractNetworkEnergyItem {
         useDelegate(type, player, stack, slotReference);
     }
 
+    /**
+     * 打开无线样板终端。
+     *
+     * <p>不走 RS2 的 {@code MenuOpener}：它把 provider 当作 {@code ExtendedMenuProvider<?>} 处理，
+     * 泛型擦除后会把我们的数据按 {@code PatternGridData} 编码，发包时直接 ClassCastException。
+     * 这里自己用 {@code ExtendedScreenHandlerFactory} 明确指定数据类型。</p>
+     */
+    private static void openPatternGrid(final ServerPlayer player,
+                                        final ItemStack stack,
+                                        final SlotReference slotReference) {
+        final com.refinedmods.refinedstorage.common.autocrafting.patterngrid.PatternGridData data =
+            ar.hxi.ez2rs.terminal.patterngrid.WirelessPatternGrid.empty();
+        player.openMenu(new net.fabricmc.fabric.api.screenhandler.v1.ExtendedScreenHandlerFactory<
+            ar.hxi.ez2rs.terminal.patterngrid.WirelessPatternGridData>() {
+            @Override
+            public net.minecraft.network.chat.Component getDisplayName() {
+                return stack.getHoverName();
+            }
+
+            @Override
+            public net.minecraft.world.inventory.AbstractContainerMenu createMenu(
+                final int syncId,
+                final net.minecraft.world.entity.player.Inventory inventory,
+                final net.minecraft.world.entity.player.Player p) {
+                return new ar.hxi.ez2rs.terminal.patterngrid.WirelessPatternGridContainerMenu(
+                    syncId,
+                    inventory,
+                    data,
+                    slotReference,
+                    true
+                );
+            }
+
+            @Override
+            public ar.hxi.ez2rs.terminal.patterngrid.WirelessPatternGridData getScreenOpeningData(
+                final ServerPlayer serverPlayer) {
+                return new ar.hxi.ez2rs.terminal.patterngrid.WirelessPatternGridData(data, slotReference);
+            }
+        });
+    }
+
     private static void useDelegate(final UniversalTerminalType type,
                                     final ServerPlayer player,
                                     final ItemStack stack,
@@ -71,6 +112,7 @@ public class WirelessUniversalGridItem extends AbstractNetworkEnergyItem {
                 .use(player, stack, slotReference);
             case AUTOCRAFTING_MONITOR -> Items.INSTANCE.getWirelessAutocraftingMonitor()
                 .use(player, stack, slotReference);
+            case PATTERN_GRID -> openPatternGrid(player, stack, slotReference);
         }
     }
 

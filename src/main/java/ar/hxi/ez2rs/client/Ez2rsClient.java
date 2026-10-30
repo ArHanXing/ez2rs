@@ -47,6 +47,7 @@ public class Ez2rsClient implements ClientModInitializer {
 
     @Override
     public void onInitializeClient() {
+        Ez2rsClientScreens.register();
         registerGuiPack();
         ScreenEvents.AFTER_INIT.register((client, screen, scaledWidth, scaledHeight) ->
             ScreenKeyboardEvents.allowKeyPress(screen).register((s, keyCode, scanCode, modifiers) ->

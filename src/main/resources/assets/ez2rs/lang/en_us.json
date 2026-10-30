@@ -12,5 +12,6 @@
   "gui.ez2rs.universal_terminal.current": "Current: %s",
   "gui.ez2rs.universal_terminal.click_to_cycle": "Click to switch terminal",
   "tooltip.ez2rs.universal_terminal.empty": "Unprogrammed - craft it with a wireless terminal to add a page",
-  "gui.ez2rs.universal_terminal.page": "Page %s / %s"
+  "gui.ez2rs.universal_terminal.page": "Page %s / %s",
+  "gui.ez2rs.universal_terminal.type.pattern_grid": "Pattern Grid"
 }

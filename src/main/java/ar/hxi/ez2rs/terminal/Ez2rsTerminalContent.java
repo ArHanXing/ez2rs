@@ -36,6 +36,13 @@ public final class Ez2rsTerminalContent {
             .networkSynchronized(net.minecraft.network.codec.ByteBufCodecs.VAR_INT)
             .build();
 
+    /** 无线样板终端的草稿快照。 */
+    public static final DataComponentType<net.minecraft.nbt.CompoundTag> PATTERN_GRID_DRAFT =
+        DataComponentType.<net.minecraft.nbt.CompoundTag>builder()
+            .persistent(net.minecraft.nbt.CompoundTag.CODEC)
+            .networkSynchronized(net.minecraft.network.codec.ByteBufCodecs.COMPOUND_TAG)
+            .build();
+
     private static Supplier<WirelessUniversalGridItem> item;
 
     private Ez2rsTerminalContent() {
@@ -51,6 +58,11 @@ public final class Ez2rsTerminalContent {
             BuiltInRegistries.DATA_COMPONENT_TYPE,
             ResourceLocation.fromNamespaceAndPath(Ez2rs.MOD_ID, "current_page"),
             CURRENT_PAGE
+        );
+        net.minecraft.core.Registry.register(
+            BuiltInRegistries.DATA_COMPONENT_TYPE,
+            ResourceLocation.fromNamespaceAndPath(Ez2rs.MOD_ID, "pattern_grid_draft"),
+            PATTERN_GRID_DRAFT
         );
     }
 

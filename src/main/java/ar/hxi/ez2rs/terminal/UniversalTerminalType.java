@@ -18,7 +18,8 @@ import net.minecraft.util.StringRepresentable;
 public enum UniversalTerminalType implements StringRepresentable {
     GRID("grid"),
     CRAFTING_GRID("crafting_grid"),
-    AUTOCRAFTING_MONITOR("autocrafting_monitor");
+    AUTOCRAFTING_MONITOR("autocrafting_monitor"),
+    PATTERN_GRID("pattern_grid");
 
     public static final Codec<UniversalTerminalType> CODEC =
         StringRepresentable.fromEnum(UniversalTerminalType::values);

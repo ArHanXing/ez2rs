@@ -1,6 +1,7 @@
 package ar.hxi.ez2rs;
 
 import ar.hxi.ez2rs.net.CycleUniversalTerminalPacket;
+import ar.hxi.ez2rs.terminal.Ez2rsMenus;
 import ar.hxi.ez2rs.terminal.Ez2rsRecipes;
 import ar.hxi.ez2rs.terminal.Ez2rsTerminalContent;
 import ar.hxi.ez2rs.terminal.WirelessUniversalGridItem;
@@ -55,6 +56,7 @@ public class Ez2rs implements ModInitializer, RefinedStoragePlugin {
         }
         bootstrapped = true;
         Ez2rsTerminalContent.registerDataComponents();
+        Ez2rsMenus.register();
         Ez2rsRecipes.register();
         CycleUniversalTerminalPacket.register();
         LOGGER.info("EZ2RS enabled");
