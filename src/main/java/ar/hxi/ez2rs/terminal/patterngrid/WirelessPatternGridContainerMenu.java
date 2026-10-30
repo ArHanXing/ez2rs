@@ -75,13 +75,12 @@ public class WirelessPatternGridContainerMenu extends PatternGridContainerMenu {
         this.slotReference = slotReference;
         this.disabledSlot = slotReference;
         final Player player = playerInventory.player;
+        this.processingInput = Ez2rsPatternGridBridge.readProcessingInput(this);
+        this.stonecutter = Ez2rsPatternGridBridge.readStonecutterInput(this);
         this.crafting = RecipeMatrix.crafting(() -> {
         }, player::level);
         this.smithing = RecipeMatrix.smithingTable(() -> {
         }, player::level);
-        this.processingInput = Ez2rsPatternGridBridge.newProcessingInput();
-        this.processingOutput = Ez2rsPatternGridBridge.newProcessingOutput();
-        this.stonecutter = new StonecutterDraftContainer(player::level);
         if (restore) {
             restoreFromItem(player);
         }
@@ -108,10 +107,20 @@ public class WirelessPatternGridContainerMenu extends PatternGridContainerMenu {
         this.draftFuzzy = fuzzy;
     }
 
-    /** 处理矩阵输入/输出、石板机输入：父类里的那两个字段是包私有类型，外部拿不到，这里自建一份。 */
-    private final com.refinedmods.refinedstorage.common.api.support.resource.ResourceContainer processingInput;
-    private final com.refinedmods.refinedstorage.common.api.support.resource.ResourceContainer processingOutput;
-    private final StonecutterDraftContainer stonecutter;
+    /**
+     * 处理矩阵 / 石板机用的是父类的那几个容器 —— 槽位绑定的就是它们。
+     *
+     * <p>之前这里自建了一份，导致放进槽位的材料进了父类容器、我们读自己的空容器，
+     * 于是处理样板放不了东西、切石机也选不出产出。声明类型是包私有类，
+     * 所以通过 accessor 以 Object 取出、再由桥接强转。</p>
+     */
+    private com.refinedmods.refinedstorage.common.api.support.resource.ResourceContainer processingInput;
+
+    private Object stonecutter;
+
+    private com.refinedmods.refinedstorage.common.api.support.resource.ResourceContainer processingOutput() {
+        return self().ez2rs$processingOutput();
+    }
 
     /**
      * 自己处理客户端的属性变更。
@@ -176,6 +185,108 @@ public class WirelessPatternGridContainerMenu extends PatternGridContainerMenu {
     private final Container parentSmithingMatrix = self().ez2rs$smithingTableMatrix();
 
     /**
+     * 样板槽放进一个已编码样板时，自动切到它所属的类型并把内容铺回矩阵。
+     *
+     * <p>对应方块版的 {@code PatternGridBlockEntity#copyPattern}：
+     * 读样板类型 -> 切类型 -> 把材料/产出填回对应的矩阵，玩家不用手动切换再重摆。</p>
+     */
+    public void ez2rs$copyPattern(final ItemStack stack) {
+        final com.refinedmods.refinedstorage.common.autocrafting.PatternState state =
+            stack.get(com.refinedmods.refinedstorage.common.content.DataComponents.INSTANCE.getPatternState());
+        if (state == null) {
+            return;
+        }
+        draftPatternType = state.type();
+        // 同步给客户端，让按钮图标和矩阵区跟着切
+        getProperty(Ez2rsPatternGridBridge.patternTypeProperty()).set(state.type().ordinal());
+        switch (state.type()) {
+            case CRAFTING -> copyCrafting(stack);
+            case PROCESSING -> copyProcessing(stack);
+            case STONECUTTER -> copyStonecutter(stack);
+            case SMITHING_TABLE -> copySmithing(stack);
+        }
+    }
+
+    private void copyCrafting(final ItemStack stack) {
+        final var state = stack.get(
+            com.refinedmods.refinedstorage.common.content.DataComponents.INSTANCE.getCraftingPatternState());
+        if (state == null) {
+            return;
+        }
+        draftFuzzy = state.fuzzyMode();
+        getProperty(com.refinedmods.refinedstorage.common.support.containermenu.PropertyTypes.FUZZY_MODE)
+            .set(draftFuzzy ? 1 : 0);
+        parentCraftingMatrix.clearContent();
+        final var positioned = state.input();
+        final var input = positioned.input();
+        for (int x = 0; x < input.width(); x++) {
+            for (int y = 0; y < input.height(); y++) {
+                final int index = x + positioned.left() + (y + positioned.top()) * 3;
+                if (index >= 0 && index < parentCraftingMatrix.getContainerSize()) {
+                    parentCraftingMatrix.setItem(index, input.getItem(x + y * input.width()));
+                }
+            }
+        }
+        syncCrafting();
+    }
+
+    private void copyProcessing(final ItemStack stack) {
+        final var state = stack.get(
+            com.refinedmods.refinedstorage.common.content.DataComponents.INSTANCE.getProcessingPatternState());
+        if (state == null) {
+            return;
+        }
+        for (int i = 0; i < state.ingredients().size() && i < processingInput.size(); i++) {
+            final int index = i;
+            state.ingredients().get(i).ifPresent(ingredient ->
+                Ez2rsPatternGridBridge.setProcessingIngredient(processingInput, this, index, ingredient));
+        }
+        final var output = processingOutput();
+        for (int i = 0; i < state.outputs().size() && i < output.size(); i++) {
+            final int index = i;
+            state.outputs().get(i).ifPresent(amount -> output.set(index, amount));
+        }
+    }
+
+    private void copyStonecutter(final ItemStack stack) {
+        final var state = stack.get(
+            com.refinedmods.refinedstorage.common.content.DataComponents.INSTANCE.getStonecutterPatternState());
+        if (state == null) {
+            return;
+        }
+        final Container stonecutterContainer =
+            (Container) Ez2rsPatternGridBridge.asStonecutterRaw(stonecutter);
+        stonecutterContainer.clearContent();
+        stonecutterContainer.setItem(0, state.input().toItemStack());
+        Ez2rsPatternGridBridge.setStonecutterSelected(stonecutter, -1);
+        final ItemStack wanted = state.selectedOutput().toItemStack();
+        final var recipes = Ez2rsPatternGridBridge.stonecutterRecipesOf(stonecutter);
+        for (int i = 0; i < recipes.size(); i++) {
+            final ItemStack result = recipes.get(i).value().assemble(
+                new SingleRecipeInput(state.input().toItemStack()),
+                playerInventory.player.level().registryAccess()
+            );
+            if (ItemStack.isSameItemSameComponents(result, wanted)) {
+                Ez2rsPatternGridBridge.setStonecutterSelected(stonecutter, i);
+                break;
+            }
+        }
+    }
+
+    private void copySmithing(final ItemStack stack) {
+        final var state = stack.get(
+            com.refinedmods.refinedstorage.common.content.DataComponents.INSTANCE.getSmithingTablePatternState());
+        if (state == null) {
+            return;
+        }
+        parentSmithingMatrix.clearContent();
+        parentSmithingMatrix.setItem(0, state.template().toItemStack());
+        parentSmithingMatrix.setItem(1, state.base().toItemStack());
+        parentSmithingMatrix.setItem(2, state.addition().toItemStack());
+        syncSmithing();
+    }
+
+    /**
      * 槽位一变就重算配方矩阵，把结果写进父类的 result 容器。
      *
      * <p>方块版靠 RecipeMatrix 自己监听矩阵变化，我们是从 GridData 构造的，
@@ -190,6 +301,29 @@ public class WirelessPatternGridContainerMenu extends PatternGridContainerMenu {
         }
         syncCrafting();
         syncSmithing();
+        autoSwitchToPatternInOutput();
+    }
+
+    /**
+     * 样板输出槽里出现已编码样板时，自动切到它所属的类型。
+     *
+     * <p>对应方块版在 {@code patternOutputSlot.set()} 里调用 copyPattern 的行为。
+     * 这里用容器变化作为触发点：只要槽里是样板且类型与当前不同，就切过去。</p>
+     */
+    private void autoSwitchToPatternInOutput() {
+        if (playerInventory.player.level().isClientSide()) {
+            return;
+        }
+        final ItemStack inOutput = self().ez2rs$patternOutput().getItem(0);
+        if (inOutput.isEmpty()) {
+            return;
+        }
+        final var state = inOutput.get(
+            com.refinedmods.refinedstorage.common.content.DataComponents.INSTANCE.getPatternState());
+        if (state == null || state.type() == draftPatternType) {
+            return;
+        }
+        ez2rs$copyPattern(inOutput);
     }
 
     @Override
@@ -229,7 +363,7 @@ public class WirelessPatternGridContainerMenu extends PatternGridContainerMenu {
 
     private ItemStack createProcessingPattern() {
         if (processingInput.isEmpty()
-            || processingOutput.isEmpty()) {
+            || processingOutput().isEmpty()) {
             return ItemStack.EMPTY;
         }
         final ItemStack result = PatternGridBlockEntity.createPatternStack(PatternType.PROCESSING);
@@ -240,7 +374,7 @@ public class WirelessPatternGridContainerMenu extends PatternGridContainerMenu {
             ingredients.add(Ez2rsPatternGridBridge.processingIngredient(input, i));
         }
         final List<Optional<ResourceAmount>> outputs = Ez2rsPatternGridBridge.processingOutputs(
-            processingOutput
+            processingOutput()
         );
         result.set(
             DataComponents.INSTANCE.getProcessingPatternState(),
@@ -250,12 +384,16 @@ public class WirelessPatternGridContainerMenu extends PatternGridContainerMenu {
     }
 
     private ItemStack createStonecutterPattern(final Player player) {
-        if (stonecutter.getItem(0).isEmpty() || !stonecutter.hasSelectedRecipe()) {
+        final Container stonecutterContainer =
+            (Container) Ez2rsPatternGridBridge.asStonecutterRaw(stonecutter);
+        if (stonecutterContainer.getItem(0).isEmpty()
+            || !Ez2rsPatternGridBridge.stonecutterHasSelectedOf(stonecutter)) {
             return ItemStack.EMPTY;
         }
-        final ItemStack input = stonecutter.getItem(0);
-        final List<RecipeHolder<StonecutterRecipe>> recipes = stonecutter.getRecipes();
-        final int selected = stonecutter.getSelectedRecipe();
+        final ItemStack input = stonecutterContainer.getItem(0);
+        final List<RecipeHolder<StonecutterRecipe>> recipes =
+            Ez2rsPatternGridBridge.stonecutterRecipesOf(stonecutter);
+        final int selected = Ez2rsPatternGridBridge.stonecutterSelectedOf(stonecutter);
         if (selected < 0 || selected >= recipes.size()) {
             return ItemStack.EMPTY;
         }
@@ -335,11 +473,11 @@ public class WirelessPatternGridContainerMenu extends PatternGridContainerMenu {
                 draftFuzzy,
                 parentCraftingMatrix,
                 parentSmithingMatrix,
-                stonecutter,
+                Ez2rsPatternGridBridge.asStonecutterRaw(stonecutter),
                 self().ez2rs$patternInput(),
                 self().ez2rs$patternOutput(),
                 processingInput,
-                processingOutput
+                processingOutput()
             )
         );
     }
@@ -361,11 +499,11 @@ public class WirelessPatternGridContainerMenu extends PatternGridContainerMenu {
             player.level(),
             parentCraftingMatrix,
             parentSmithingMatrix,
-            stonecutter,
+            Ez2rsPatternGridBridge.asStonecutterRaw(stonecutter),
             self().ez2rs$patternInput(),
             self().ez2rs$patternOutput(),
             processingInput,
-            processingOutput
+            processingOutput()
         );
         syncCrafting();
         syncSmithing();

@@ -44,6 +44,77 @@ public final class Ez2rsPatternGridBridge {
         return container instanceof StonecutterInputContainer stonecutter && stonecutter.hasSelectedRecipe();
     }
 
+    /**
+     * 反射读取父类那两个容器。
+     *
+     * <p>它们的声明类型是包私有类：accessor mixin 的返回类型写成 Object 时
+     * remap 匹配不到字段（运行期会找不到），写成包私有类型又编译不过。
+     * 所以在同包里用反射读，再强转成包私有类型。</p>
+     */
+    public static com.refinedmods.refinedstorage.common.api.support.resource.ResourceContainer
+        readProcessingInput(final Object menu) {
+        try {
+            final java.lang.reflect.Field field = PatternGridContainerMenu.class
+                .getDeclaredField("processingInput");
+            field.setAccessible(true);
+            return (ProcessingMatrixInputResourceContainer) field.get(menu);
+        } catch (final ReflectiveOperationException e) {
+            throw new IllegalStateException("Failed to read processingInput", e);
+        }
+    }
+
+    /** 把处理样板的一个输入项写回输入容器（类型是包私有的）。 */
+    public static void setProcessingIngredient(final Object container,
+                                               final Object menu,
+                                               final int index,
+                                               final com.refinedmods.refinedstorage.common.autocrafting
+                                                   .ProcessingPatternState.ProcessingIngredient ingredient) {
+        ((ProcessingMatrixInputResourceContainer) container).set(index, ingredient);
+    }
+
+    public static Object readStonecutterInput(final Object menu) {
+        try {
+            final java.lang.reflect.Field field = PatternGridContainerMenu.class
+                .getDeclaredField("stonecutterInput");
+            field.setAccessible(true);
+            return field.get(menu);
+        } catch (final ReflectiveOperationException e) {
+            throw new IllegalStateException("Failed to read stonecutterInput", e);
+        }
+    }
+
+    /** 父类那两个容器（声明类型是包私有类，mixin 用 Object 取到后在这里强转）。 */
+    public static com.refinedmods.refinedstorage.common.api.support.resource.ResourceContainer
+        asProcessingInput(final Object container) {
+        return (ProcessingMatrixInputResourceContainer) container;
+    }
+
+    public static Object asStonecutter(final Object container) {
+        return (StonecutterInputContainer) container;
+    }
+
+    /** 石板机容器转成原版 Container（它继承 SimpleContainer）。 */
+    public static net.minecraft.world.Container asStonecutterRaw(final Object container) {
+        return (StonecutterInputContainer) container;
+    }
+
+    public static java.util.List<net.minecraft.world.item.crafting.RecipeHolder<
+        net.minecraft.world.item.crafting.StonecutterRecipe>> stonecutterRecipesOf(final Object container) {
+        return ((StonecutterInputContainer) container).getRecipes();
+    }
+
+    public static int stonecutterSelectedOf(final Object container) {
+        return ((StonecutterInputContainer) container).getSelectedRecipe();
+    }
+
+    public static boolean stonecutterHasSelectedOf(final Object container) {
+        return ((StonecutterInputContainer) container).hasSelectedRecipe();
+    }
+
+    public static void setStonecutterSelected(final Object container, final int index) {
+        ((StonecutterInputContainer) container).setSelectedRecipe(index);
+    }
+
     /** 样板类型属性（属性类型类本身是包私有的）。 */
     public static com.refinedmods.refinedstorage.common.support.containermenu.PropertyType<PatternType>
         patternTypeProperty() {
