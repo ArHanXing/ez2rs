@@ -126,6 +126,16 @@ public final class Ez2rsPatternGridBridge {
         return PatternGridPropertyTypes.PATTERN_TYPE.id();
     }
 
+    /** 石板机选中配方属性（类型类本身是包私有的）。 */
+    public static com.refinedmods.refinedstorage.common.support.containermenu.PropertyType<Integer>
+        stonecutterRecipeProperty() {
+        return PatternGridPropertyTypes.STONECUTTER_SELECTED_RECIPE;
+    }
+
+    public static net.minecraft.resources.ResourceLocation stonecutterRecipePropertyId() {
+        return PatternGridPropertyTypes.STONECUTTER_SELECTED_RECIPE.id();
+    }
+
     /** 模糊模式属性的 id。 */
     public static net.minecraft.resources.ResourceLocation fuzzyModePropertyId() {
         return com.refinedmods.refinedstorage.common.support.containermenu.PropertyTypes.FUZZY_MODE.id();

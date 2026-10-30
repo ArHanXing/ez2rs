@@ -149,7 +149,14 @@ public class WirelessPatternGridContainerMenu extends PatternGridContainerMenu {
                 .set(newValue);
             return;
         }
-        super.receivePropertyChangeFromClient(id, newValue);
+        if (Ez2rsPatternGridBridge.stonecutterRecipePropertyId().equals(id)) {
+            // 切石机选中项：存到父类的 granitecutter 容器里，
+            // canCreatePattern() 与编码都读它。
+            Ez2rsPatternGridBridge.setStonecutterSelected(stonecutter, newValue);
+            getProperty(Ez2rsPatternGridBridge.stonecutterRecipeProperty()).set(newValue);
+            return;
+        }
+        // 不要调 super：它会把属性无条件强转成 ServerProperty，而这里是 ClientProperty。
     }
 
     /**
@@ -431,7 +438,10 @@ public class WirelessPatternGridContainerMenu extends PatternGridContainerMenu {
     /** 把父类容器里玩家摆的物品同步到本地配方矩阵，并把结果写回父类的 result 槽。 */
     private void syncCrafting() {
         final Player player = playerInventory.player;
-        if (player.level() == null) {
+        // 只在服务端算：客户端那次调用里 RecipeMatrix.updateResult 会直接 return，
+        // getResult() 是空的，把这个空值写回容器会覆盖掉刚同步下来的服务端结果
+        // （表现为"放完东西不显示，重开界面才有"）。
+        if (player.level() == null || player.level().isClientSide()) {
             return;
         }
         for (int i = 0; i < 9; i++) {
@@ -443,7 +453,7 @@ public class WirelessPatternGridContainerMenu extends PatternGridContainerMenu {
 
     private void syncSmithing() {
         final Player player = playerInventory.player;
-        if (player.level() == null) {
+        if (player.level() == null || player.level().isClientSide()) {
             return;
         }
         for (int i = 0; i < 3; i++) {
