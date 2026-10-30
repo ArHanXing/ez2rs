@@ -116,6 +116,18 @@ public class WirelessPatternGridContainerMenu extends PatternGridContainerMenu {
     }
 
     /**
+     * 无线终端的菜单必须一直视为有效。
+     *
+     * <p>父类用 {@code grid.canMenuStayOpen(player)} 做方块距离校验，而无线版没有方块、
+     * grid 也是空的，于是界面刚打开就会被服务端关掉（表现为闪一下消失）。
+     * RS2 自己的无线监视器菜单同样是直接返回 {@code true}。</p>
+     */
+    @Override
+    public boolean stillValid(final Player player) {
+        return true;
+    }
+
+    /**
      * 覆写成我们自己的菜单类型。
      *
      * <p>父类构造器会把 menuType 固定成 RS2 的样板网格类型，而 Fabric 打开界面时按
