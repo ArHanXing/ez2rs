@@ -262,6 +262,10 @@ public class WirelessPatternGridContainerMenu extends PatternGridContainerMenu {
         if (state == null) {
             return;
         }
+        // 先清空：否则上一次留下的内容会停留在样板没有覆盖到的槽位上
+        // （方块版 copyProcessingPattern 第一句就是 clearProcessing()）
+        processingInput.clear();
+        processingOutput().clear();
         for (int i = 0; i < state.ingredients().size() && i < processingInput.size(); i++) {
             final int index = i;
             state.ingredients().get(i).ifPresent(ingredient ->
