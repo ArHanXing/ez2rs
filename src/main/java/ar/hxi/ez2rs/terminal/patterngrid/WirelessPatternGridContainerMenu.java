@@ -175,10 +175,27 @@ public class WirelessPatternGridContainerMenu extends PatternGridContainerMenu {
     private final Container parentCraftingMatrix = self().ez2rs$craftingMatrix();
     private final Container parentSmithingMatrix = self().ez2rs$smithingTableMatrix();
 
+    /**
+     * 槽位一变就重算配方矩阵，把结果写进父类的 result 容器。
+     *
+     * <p>方块版靠 RecipeMatrix 自己监听矩阵变化，我们是从 GridData 构造的，
+     * 没有那个监听链。不在这里主动同步，父类的 {@code canCreatePattern()}
+     * 会一直看到空的 result，编码按钮永远不可用。</p>
+     */
+    @Override
+    public void slotsChanged(final net.minecraft.world.Container container) {
+        super.slotsChanged(container);
+        if (playerInventory.player.level().isClientSide()) {
+            return;
+        }
+        syncCrafting();
+        syncSmithing();
+    }
+
     @Override
     public void createPattern() {
-        final Player player = this.player;
-        if (player == null || player.level() == null) {
+        final Player player = playerInventory.player;
+        if (player.level() == null) {
             return;
         }
         syncCrafting();
@@ -275,8 +292,8 @@ public class WirelessPatternGridContainerMenu extends PatternGridContainerMenu {
 
     /** 把父类容器里玩家摆的物品同步到本地配方矩阵，并把结果写回父类的 result 槽。 */
     private void syncCrafting() {
-        final Player player = this.player;
-        if (player == null || player.level() == null) {
+        final Player player = playerInventory.player;
+        if (player.level() == null) {
             return;
         }
         for (int i = 0; i < 9; i++) {
@@ -287,8 +304,8 @@ public class WirelessPatternGridContainerMenu extends PatternGridContainerMenu {
     }
 
     private void syncSmithing() {
-        final Player player = this.player;
-        if (player == null || player.level() == null) {
+        final Player player = playerInventory.player;
+        if (player.level() == null) {
             return;
         }
         for (int i = 0; i < 3; i++) {
