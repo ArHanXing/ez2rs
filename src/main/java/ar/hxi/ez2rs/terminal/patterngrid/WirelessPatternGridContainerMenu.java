@@ -77,6 +77,10 @@ public class WirelessPatternGridContainerMenu extends PatternGridContainerMenu {
         final Player player = playerInventory.player;
         this.processingInput = Ez2rsPatternGridBridge.readProcessingInput(this);
         this.stonecutter = Ez2rsPatternGridBridge.readStonecutterInput(this);
+        // 处理矩阵是 ResourceContainer，不走原版槽位通知；它自带 setListener，
+        // 挂上就能像方块版那样在内容变化时立刻重算，而不是等下一 tick 的快照比对。
+        this.processingInput.setListener(this::processingOutputChanged);
+        this.processingOutput().setListener(this::processingOutputChanged);
         this.crafting = RecipeMatrix.crafting(() -> {
         }, player::level);
         this.smithing = RecipeMatrix.smithingTable(() -> {
@@ -118,8 +122,20 @@ public class WirelessPatternGridContainerMenu extends PatternGridContainerMenu {
 
     private Object stonecutter;
 
+    private void processingOutputChanged() {
+        if (playerInventory.player.level().isClientSide()) {
+            return;
+        }
+        // 处理样板的"结果"没有独立槽位，界面靠 ResourceContainer 自身渲染，
+        // 内容一变直接让客户端那两份容器跟着更新即可。
+        lastDraftSnapshot = List.of();
+    }
+
     /** 上一 tick 的草稿快照，用来发现矩阵/石板机的变化。 */
     private List<String> lastDraftSnapshot = List.of();
+
+    /** 上一次看到的样板槽内容，用来识别"刚放进去"这个瞬间。 */
+    private ItemStack lastSeenOutput = ItemStack.EMPTY;
 
     private com.refinedmods.refinedstorage.common.api.support.resource.ResourceContainer processingOutput() {
         return self().ez2rs$processingOutput();
@@ -343,6 +359,14 @@ public class WirelessPatternGridContainerMenu extends PatternGridContainerMenu {
         items.add(String.valueOf(Ez2rsPatternGridBridge.stonecutterSelectedOf(stonecutter)));
         items.add(String.valueOf(draftPatternType));
         items.add(self().ez2rs$patternOutput().getItem(0).toString());
+        // 处理矩阵走 ResourceContainer，不是原版 Container，必须单独比
+        for (int i = 0; i < processingInput.size(); i++) {
+            items.add(String.valueOf(processingInput.get(i)));
+        }
+        final var output = processingOutput();
+        for (int i = 0; i < output.size(); i++) {
+            items.add(String.valueOf(output.get(i)));
+        }
         return items;
     }
 
@@ -352,20 +376,56 @@ public class WirelessPatternGridContainerMenu extends PatternGridContainerMenu {
      * <p>对应方块版在 {@code patternOutputSlot.set()} 里调用 copyPattern 的行为。
      * 这里用容器变化作为触发点：只要槽里是样板且类型与当前不同，就切过去。</p>
      */
+    /**
+     * 只在「样板槽刚刚被写入一个新样板」的那一瞬间切换类型。
+     *
+     * <p>对应方块版：它在 {@code patternOutputSlot.set()} 里调 {@code copyPattern}，
+     * 是放置动作本身触发的一次性行为。之前我每 tick 比对类型再切，
+     * 会把玩家手动切换的类型又拽回去。</p>
+     */
     private void autoSwitchToPatternInOutput() {
         if (playerInventory.player.level().isClientSide()) {
             return;
         }
         final ItemStack inOutput = self().ez2rs$patternOutput().getItem(0);
+        if (inOutput == lastSeenOutput) {
+            return;
+        }
+        lastSeenOutput = inOutput;
         if (inOutput.isEmpty()) {
             return;
         }
         final var state = inOutput.get(
             com.refinedmods.refinedstorage.common.content.DataComponents.INSTANCE.getPatternState());
-        if (state == null || state.type() == draftPatternType) {
+        if (state == null) {
             return;
         }
         ez2rs$copyPattern(inOutput);
+    }
+
+    /**
+     * 清空当前草稿（Clear 按钮）。
+     *
+     * <p>方块版在 {@code PatternGridContainerMenu#clear()} 里调用
+     * {@code patternGrid.clear()}；无线版没有方块实体，这里直接清各矩阵容器。</p>
+     */
+    @Override
+    public void clear() {
+        if (playerInventory.player.level().isClientSide()) {
+            return;
+        }
+        parentCraftingMatrix.clearContent();
+        parentSmithingMatrix.clearContent();
+        final Container stonecutterContainer =
+            (Container) Ez2rsPatternGridBridge.asStonecutterRaw(stonecutter);
+        stonecutterContainer.clearContent();
+        Ez2rsPatternGridBridge.setStonecutterSelected(stonecutter, -1);
+        processingInput.clear();
+        processingOutput().clear();
+        self().ez2rs$craftingResult().setItem(0, ItemStack.EMPTY);
+        self().ez2rs$smithingTableResult().setItem(0, ItemStack.EMPTY);
+        syncCrafting();
+        syncSmithing();
     }
 
     @Override
