@@ -118,6 +118,9 @@ public class WirelessPatternGridContainerMenu extends PatternGridContainerMenu {
 
     private Object stonecutter;
 
+    /** 上一 tick 的草稿快照，用来发现矩阵/石板机的变化。 */
+    private List<String> lastDraftSnapshot = List.of();
+
     private com.refinedmods.refinedstorage.common.api.support.resource.ResourceContainer processingOutput() {
         return self().ez2rs$processingOutput();
     }
@@ -300,15 +303,47 @@ public class WirelessPatternGridContainerMenu extends PatternGridContainerMenu {
      * 没有那个监听链。不在这里主动同步，父类的 {@code canCreatePattern()}
      * 会一直看到空的 result，编码按钮永远不可用。</p>
      */
+    /**
+     * 每 tick 检查一次草稿变化。
+     *
+     * <p>不能靠 {@code slotsChanged}：矩阵容器是原版 {@code TransientCraftingContainer}，
+     * 它的 {@code setChanged()} 是空实现，压根不会通知菜单；方块版是靠自己给
+     * {@code RecipeMatrixContainer} 传了 listener 才有通知链，而父类给我们构造的那个
+     * 传的是 null。</p>
+     *
+     * <p>所以这里自己比对上一 tick 的快照，变了就重算一次。</p>
+     */
     @Override
-    public void slotsChanged(final net.minecraft.world.Container container) {
-        super.slotsChanged(container);
+    public void broadcastChanges() {
+        super.broadcastChanges();
         if (playerInventory.player.level().isClientSide()) {
             return;
         }
+        final List<String> snapshot = snapshotDraft();
+        if (snapshot.equals(lastDraftSnapshot)) {
+            return;
+        }
+        lastDraftSnapshot = snapshot;
         syncCrafting();
         syncSmithing();
         autoSwitchToPatternInOutput();
+    }
+
+    private List<String> snapshotDraft() {
+        final List<String> items = new java.util.ArrayList<>();
+        for (int i = 0; i < parentCraftingMatrix.getContainerSize(); i++) {
+            items.add(parentCraftingMatrix.getItem(i).toString());
+        }
+        for (int i = 0; i < parentSmithingMatrix.getContainerSize(); i++) {
+            items.add(parentSmithingMatrix.getItem(i).toString());
+        }
+        final Container stonecutterContainer =
+            (Container) Ez2rsPatternGridBridge.asStonecutterRaw(stonecutter);
+        items.add(stonecutterContainer.getItem(0).toString());
+        items.add(String.valueOf(Ez2rsPatternGridBridge.stonecutterSelectedOf(stonecutter)));
+        items.add(String.valueOf(draftPatternType));
+        items.add(self().ez2rs$patternOutput().getItem(0).toString());
+        return items;
     }
 
     /**
