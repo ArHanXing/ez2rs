@@ -22,7 +22,6 @@ import com.refinedmods.refinedstorage.common.autocrafting.patterngrid.PatternGri
 import com.refinedmods.refinedstorage.common.autocrafting.patterngrid.PatternType;
 import com.refinedmods.refinedstorage.common.content.DataComponents;
 import com.refinedmods.refinedstorage.common.support.RecipeMatrix;
-import com.refinedmods.refinedstorage.common.support.containermenu.ServerProperty;
 import com.refinedmods.refinedstorage.common.support.resource.ItemResource;
 
 import net.minecraft.world.Container;
@@ -68,26 +67,11 @@ public class WirelessPatternGridContainerMenu extends PatternGridContainerMenu {
                                             final SlotReference slotReference,
                                             final boolean restore) {
         super(syncId, playerInventory, data);
-        // 父类构造器注册的是 ClientProperty，那是给纯客户端快照用的：
-        // 服务端那份 ClientProperty.value 永远不会被更新（set() 只在客户端调），
-        // 于是服务端读到的样板类型永远是初始值，编码出来的样板类型就永远不对。
-        //
-        // 这个构造器在客户端和服务端都会执行，所以必须按端区分：
-        //   服务端 -> ServerProperty（读我们的字段，接受客户端变更）
-        //   客户端 -> 保留父类的 ClientProperty（负责画界面并发 C2S 包）
-        // registerProperty 是 Map.put，同类型会被覆盖，替换是安全的。
-        if (!playerInventory.player.level().isClientSide()) {
-            registerProperty(new ServerProperty<>(
-                Ez2rsPatternGridBridge.patternTypeProperty(),
-                this::getDraftPatternType,
-                this::setDraftPatternType
-            ));
-            registerProperty(new ServerProperty<>(
-                com.refinedmods.refinedstorage.common.support.containermenu.PropertyTypes.FUZZY_MODE,
-                this::isDraftFuzzy,
-                this::setDraftFuzzy
-            ));
-        }
+        // 注意：这里绝不能 registerProperty 一个新的属性来"替换"父类那份。
+        // registerProperty 除了 put 进 map，还会 addDataSlot —— 两端 slot 数就会不一致
+        // （服务端多两个），服务端下发索引 4 时客户端越界：
+        //   IndexOutOfBoundsException: Index 4 out of bounds for length 4
+        // 所以沿用父类的 ClientProperty，只在 receivePropertyChangeFromClient 里写它。
         this.slotReference = slotReference;
         this.disabledSlot = slotReference;
         final Player player = playerInventory.player;
@@ -133,8 +117,11 @@ public class WirelessPatternGridContainerMenu extends PatternGridContainerMenu {
      * 自己处理客户端的属性变更。
      *
      * <p>父类 {@code receivePropertyChangeFromClient} 会无条件把属性强转成 {@code ServerProperty}，
-     * 但无线版用的是服务端也是客户端构造器（{@code ClientProperty}），于是强转必然失败。
-     * 这里改为直接写回我们自己的字段。</p>
+     * 但无线版两端用的都是父类的 {@code ClientProperty}，强转必然失败。</p>
+     *
+     * <p>这里直接写父类那个 {@code ClientProperty}（它的 {@code set(int)} 只更新本地
+     * value/rawValue，不会再发包），于是父类的 {@code getPatternType()} 立刻拿到新值 ——
+     * 槽位的 {@code isActive()} 就是靠它判断的，不写就会导致切换类型后矩阵槽位被禁用。</p>
      */
     @Override
     public void receivePropertyChangeFromClient(final net.minecraft.resources.ResourceLocation id,
@@ -142,16 +129,15 @@ public class WirelessPatternGridContainerMenu extends PatternGridContainerMenu {
         if (Ez2rsPatternGridBridge.patternTypePropertyId().equals(id)) {
             final PatternType[] values = PatternType.values();
             if (newValue >= 0 && newValue < values.length) {
-                // 写字段 + 让 DataSlot 变脏，原版就会把新值同步回客户端（按钮图标才会变）。
-                // 注意不能用 getProperty(...).set()：那是 ClientProperty 的路径，会再发一次 C2S 包。
-                // ServerProperty.get() 读的就是这个字段；原版每 tick 比对 DataSlot 的值，
-                // 字段一变就会把新值同步给客户端，按钮图标随之更新。
                 draftPatternType = values[newValue];
+                getProperty(Ez2rsPatternGridBridge.patternTypeProperty()).set(newValue);
             }
             return;
         }
         if (Ez2rsPatternGridBridge.fuzzyModePropertyId().equals(id)) {
             draftFuzzy = newValue != 0;
+            getProperty(com.refinedmods.refinedstorage.common.support.containermenu.PropertyTypes.FUZZY_MODE)
+                .set(newValue);
             return;
         }
         super.receivePropertyChangeFromClient(id, newValue);
