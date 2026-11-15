@@ -4,6 +4,7 @@ import ar.hxi.ez2rs.net.CycleUniversalTerminalPacket;
 import ar.hxi.ez2rs.terminal.Ez2rsMenus;
 import ar.hxi.ez2rs.terminal.Ez2rsRecipes;
 import ar.hxi.ez2rs.terminal.Ez2rsTerminalContent;
+import ar.hxi.ez2rs.terminal.WirelessAutocrafterManagerItem;
 import ar.hxi.ez2rs.terminal.WirelessPatternGridItem;
 import ar.hxi.ez2rs.terminal.WirelessUniversalGridItem;
 
@@ -74,6 +75,10 @@ public class Ez2rs implements ModInitializer, RefinedStoragePlugin {
             Ez2rsTerminalContent.WIRELESS_PATTERN_GRID_ID,
             WirelessPatternGridItem::new
         ));
+        Ez2rsTerminalContent.setAutocrafterManagerItem(registry.register(
+            Ez2rsTerminalContent.WIRELESS_AUTOCRAFTER_MANAGER_ID,
+            WirelessAutocrafterManagerItem::new
+        ));
     }
 
     /** 让通用终端拥有真正的物品电池（Team Reborn Energy），外部充电与能量条都靠它。 */
@@ -88,6 +93,11 @@ public class Ez2rs implements ModInitializer, RefinedStoragePlugin {
             (stack, context) -> new EnergyStorageAdapter(patternGrid.createEnergyStorage(stack), context),
             patternGrid
         );
+        final WirelessAutocrafterManagerItem autocrafterManager = Ez2rsTerminalContent.getAutocrafterManagerItem();
+        EnergyStorage.ITEM.registerForItems(
+            (stack, context) -> new EnergyStorageAdapter(autocrafterManager.createEnergyStorage(stack), context),
+            autocrafterManager
+        );
     }
 
     private static void registerCreativeModeTabListener(final RefinedStorageApi refinedStorageApi) {
@@ -98,6 +108,7 @@ public class Ez2rs implements ModInitializer, RefinedStoragePlugin {
         ItemGroupEvents.modifyEntriesEvent(tab).register(entries -> {
             entries.accept(Ez2rsTerminalContent.getItem().createAtEnergyCapacity());
             entries.accept(Ez2rsTerminalContent.getPatternGridItem().createAtEnergyCapacity());
+            entries.accept(Ez2rsTerminalContent.getAutocrafterManagerItem().createAtEnergyCapacity());
         });
     }
 }

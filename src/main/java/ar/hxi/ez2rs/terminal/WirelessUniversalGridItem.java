@@ -72,6 +72,7 @@ public class WirelessUniversalGridItem extends AbstractNetworkEnergyItem {
             case AUTOCRAFTING_MONITOR -> Items.INSTANCE.getWirelessAutocraftingMonitor()
                 .use(player, stack, slotReference);
             case PATTERN_GRID -> PatternGridOpener.open(player, stack, slotReference);
+            case AUTOCRAFTER_MANAGER -> AutocrafterManagerOpener.open(player, stack, slotReference);
         }
     }
 

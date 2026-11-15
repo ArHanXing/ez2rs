@@ -14,5 +14,7 @@
   "tooltip.ez2rs.universal_terminal.empty": "Unprogrammed - craft it with a wireless terminal to add a page",
   "gui.ez2rs.universal_terminal.page": "Page %s / %s",
   "gui.ez2rs.universal_terminal.type.pattern_grid": "Pattern Grid",
-  "item.ez2rs.wireless_pattern_grid": "Wireless Pattern Terminal"
+  "item.ez2rs.wireless_pattern_grid": "Wireless Pattern Terminal",
+  "item.ez2rs.wireless_autocrafter_manager": "Wireless Autocrafter Manager",
+  "gui.ez2rs.universal_terminal.type.autocrafter_manager": "Autocrafter Manager"
 }

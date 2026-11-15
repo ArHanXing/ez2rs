@@ -12,14 +12,14 @@ import net.minecraft.util.StringRepresentable;
 /**
  * 通用终端可以承载的终端类型。
  *
- * <p>只包含 Refined Storage / 石英兵工厂已经提供无线物品的三种终端；样板终端与自动合成仓管理终端
- * 目前只有方块版，做成无线版需要额外的远程容器同步，留待后续。</p>
+ * <p>每一种都对应一个无线终端物品；解锁配方用该物品与通用终端合成。</p>
  */
 public enum UniversalTerminalType implements StringRepresentable {
     GRID("grid"),
     CRAFTING_GRID("crafting_grid"),
     AUTOCRAFTING_MONITOR("autocrafting_monitor"),
-    PATTERN_GRID("pattern_grid");
+    PATTERN_GRID("pattern_grid"),
+    AUTOCRAFTER_MANAGER("autocrafter_manager");
 
     public static final Codec<UniversalTerminalType> CODEC =
         StringRepresentable.fromEnum(UniversalTerminalType::values);

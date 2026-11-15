@@ -16,6 +16,9 @@ public final class TerminalTypes {
     // 无线终端的整合应该发生在无线物品之间，玩家不必为了加一页再去拆一个方块终端。
     private static final ResourceLocation WIRELESS_PATTERN_GRID =
         ResourceLocation.fromNamespaceAndPath("ez2rs", "wireless_pattern_grid");
+    // 同理：自动合成仓管理页由「无线自动合成仓管理终端」解锁，不用方块版，因此与独立配方不构成环。
+    private static final ResourceLocation WIRELESS_AUTOCRAFTER_MANAGER =
+        ResourceLocation.fromNamespaceAndPath("ez2rs", "wireless_autocrafter_manager");
 
     private TerminalTypes() {
     }
@@ -28,6 +31,8 @@ public final class TerminalTypes {
             case CRAFTING_GRID ->
                 BuiltInRegistries.ITEM.getKey(stack.getItem()).equals(WIRELESS_CRAFTING_GRID);
             case PATTERN_GRID -> BuiltInRegistries.ITEM.getKey(stack.getItem()).equals(WIRELESS_PATTERN_GRID);
+            case AUTOCRAFTER_MANAGER ->
+                BuiltInRegistries.ITEM.getKey(stack.getItem()).equals(WIRELESS_AUTOCRAFTER_MANAGER);
         };
     }
 }

@@ -23,6 +23,8 @@ public final class Ez2rsTerminalContent {
         ResourceLocation.fromNamespaceAndPath(Ez2rs.MOD_ID, "wireless_universal_grid");
     public static final ResourceLocation WIRELESS_PATTERN_GRID_ID =
         ResourceLocation.fromNamespaceAndPath(Ez2rs.MOD_ID, "wireless_pattern_grid");
+    public static final ResourceLocation WIRELESS_AUTOCRAFTER_MANAGER_ID =
+        ResourceLocation.fromNamespaceAndPath(Ez2rs.MOD_ID, "wireless_autocrafter_manager");
 
     /** 已解锁的终端能力（页）。 */
     public static final DataComponentType<TerminalPages> PAGES =
@@ -47,6 +49,7 @@ public final class Ez2rsTerminalContent {
 
     private static Supplier<WirelessUniversalGridItem> item;
     private static Supplier<WirelessPatternGridItem> patternGridItem;
+    private static Supplier<WirelessAutocrafterManagerItem> autocrafterManagerItem;
 
     private Ez2rsTerminalContent() {
     }
@@ -95,6 +98,26 @@ public final class Ez2rsTerminalContent {
     public static boolean isPatternGridCapable(final ItemStack stack) {
         return stack.getItem() instanceof WirelessUniversalGridItem
             || stack.getItem() instanceof WirelessPatternGridItem;
+    }
+
+    /**
+     * 能打开无线自动合成仓管理界面的是通用终端（已解锁该页时）与独立物品本身。
+     * 与 {@link #isPatternGridCapable} 同构，只用于身份判定，不做"是否绑定了网络"的判断。
+     */
+    public static boolean isAutocrafterManagerCapable(final ItemStack stack) {
+        return stack.getItem() instanceof WirelessUniversalGridItem
+            || stack.getItem() instanceof WirelessAutocrafterManagerItem;
+    }
+
+    public static void setAutocrafterManagerItem(final Supplier<WirelessAutocrafterManagerItem> supplier) {
+        autocrafterManagerItem = supplier;
+    }
+
+    public static WirelessAutocrafterManagerItem getAutocrafterManagerItem() {
+        if (autocrafterManagerItem == null) {
+            throw new IllegalStateException("Wireless autocrafter manager item has not been registered yet");
+        }
+        return autocrafterManagerItem.get();
     }
 
     public static ResourceKey<Item> itemKey() {

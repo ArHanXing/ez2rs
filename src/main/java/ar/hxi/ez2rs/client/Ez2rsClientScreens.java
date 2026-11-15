@@ -6,6 +6,9 @@ import ar.hxi.ez2rs.terminal.patterngrid.WirelessPatternGridContainerMenu;
 import com.refinedmods.refinedstorage.common.autocrafting.patterngrid.PatternGridContainerMenu;
 import com.refinedmods.refinedstorage.common.autocrafting.patterngrid.PatternGridScreen;
 
+import com.refinedmods.refinedstorage.common.autocrafting.autocraftermanager.AutocrafterManagerContainerMenu;
+import com.refinedmods.refinedstorage.common.autocrafting.autocraftermanager.AutocrafterManagerScreen;
+
 import net.minecraft.client.gui.screens.MenuScreens;
 
 /** 客户端把本模组的菜单接到 RS2 现成的界面上。 */
@@ -31,6 +34,12 @@ public final class Ez2rsClientScreens {
             (net.minecraft.world.inventory.MenuType) Ez2rsMenus.wirelessPatternGrid(),
             (MenuScreens.ScreenConstructor<PatternGridContainerMenu, PatternGridScreen>)
                 PatternGridScreen::new
+        );
+        // 同理：泛型参数写父类 AutocrafterManagerContainerMenu，界面复用原生 AutocrafterManagerScreen。
+        MenuScreens.register(
+            (net.minecraft.world.inventory.MenuType) Ez2rsMenus.wirelessAutocrafterManager(),
+            (MenuScreens.ScreenConstructor<AutocrafterManagerContainerMenu, AutocrafterManagerScreen>)
+                AutocrafterManagerScreen::new
         );
     }
 }

@@ -6,7 +6,7 @@ run/
 .idea/
 *.iml
 .ae2guiext/
-rfsrc/
+.rfsrc/
 testserver/
 refs/
 libs/
