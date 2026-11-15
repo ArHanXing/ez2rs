@@ -74,10 +74,17 @@ public final class WirelessPatternGridContainerMenu extends Ez2rsNativePatternGr
 
     @Override
     public void removed(final Player player) {
+        // AbstractContainerScreen calls this on the client when EMI temporarily
+        // replaces the terminal with its recipe screen. EMI retains this menu
+        // and calls its transfer methods from there, so it must remain usable.
+        if (player.level().isClientSide()) {
+            super.removed(player);
+            return;
+        }
         if (closed) return;
         flushDraft();
         closed = true;
-        super.removed(player); // native path owns exactly one watcher removal
+        super.removed(player); // server owns draft persistence and watcher removal
     }
 
     @Override
