@@ -50,6 +50,9 @@ public record CycleUniversalTerminalPacket(int slot) implements CustomPacketPayl
         if (pages.isEmpty()) {
             return;
         }
+        if (player.containerMenu instanceof ar.hxi.ez2rs.terminal.patterngrid.WirelessPatternGridContainerMenu menu) {
+            menu.flushDraft();
+        }
         final int next = pages.nextIndex(Ez2rsTerminalContent.getCurrentPage(stack));
         stack.set(Ez2rsTerminalContent.CURRENT_PAGE, next);
         WirelessUniversalGridItem.open(player, stack, InventorySlotReferenceInvoker.ez2rs$create(slot));

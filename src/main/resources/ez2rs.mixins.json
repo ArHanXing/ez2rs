@@ -8,8 +8,8 @@
     "AbstractBaseContainerMenuAccessor",
     "NetworkItemContextImplMixin",
     "InventorySlotReferenceInvoker",
-    "PatternGridContainerMenuAccessor",
-    "AbstractGridContainerMenuMixin"
+    "PatternGridSortingMixin",
+    "ResourceRepositoryAccessor"
   ],
   "injectors": {
     "defaultRequire": 1

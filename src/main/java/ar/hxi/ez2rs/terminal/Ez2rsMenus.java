@@ -20,6 +20,7 @@ public final class Ez2rsMenus {
     }
 
     public static void register() {
+        ar.hxi.ez2rs.net.PatternGridSnapshotPacket.register();
         // 显式声明成 StreamCodec<RegistryFriendlyByteBuf, WirelessPatternGridData>，
         // 否则 ExtendedScreenHandlerType 会把数据按擦除后的类型编码，
         // 发包时抛 WirelessPatternGridData cannot be cast to PatternGridData。

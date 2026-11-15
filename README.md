@@ -44,9 +44,10 @@ Refined Storage 2 的附属模组（Fabric 1.21.1）。
 ```
 
 - 页按合成先后追加。已经解锁过的类型重复合成不会重复加页。
-- 电力：网络可达时从网络取电，不消耗内部电池；离开网络后回退到内部电池。
-- 无线样板终端的草稿（未取走的样板、摆在矩阵里的材料、样板类型）会存进物品，
-  关掉界面再打开原样恢复；通用终端的样板页与独立物品共用同一套草稿。
+- 通用终端电力：网络可达时从网络取电，不消耗内部电池；离开网络后回退到内部电池。
+- 无线样板终端的草稿（样板物品、矩阵内容、样板类型等）保存在当前终端物品中，
+  关闭界面再打开时恢复。通用终端样板页与独立无线样板终端采用相同的保存格式，
+  不同物品的草稿各自独立。
 
 ### 5. 无线样板终端
 
@@ -54,8 +55,8 @@ Refined Storage 2 的附属模组（Fabric 1.21.1）。
 
 支持合成 / 处理 / 切石机 / 锻造四种样板，行为与方块版一致：
 
-- 把已编码的样板放进模板槽，会**自动切到该样板的类型**并把内容回填到对应矩阵
-- Clear 按钮清空当前草稿
+- 把已编码的样板放进编码输出槽，会**自动切到该样板的类型**并把内容回填到对应矩阵
+- Clear 按钮清空当前类型的编辑矩阵
 - 处理样板的矩阵槽位数与备选原料配置与方块版相同
 
 ![无线样板终端](docs/standalone-pattern-terminal.png)
@@ -70,7 +71,12 @@ Refined Storage 2 的附属模组（Fabric 1.21.1）。
 | Fabric Loom | 1.17.19 |
 | Refined Storage | 2.0.9（声明区间 `>=2.0.0 <3.0.0`） |
 | Refined Storage - Quartz Arsenal | 1.0.8（硬依赖，提供无线合成终端） |
+| Refined Storage EMI Integration | 1.0.0（新增的直接硬依赖） |
+| EMI | 1.1.22+1.21.1（由集成桥要求安装，开发环境使用此版本） |
 | Java | 21 |
+
+玩家环境需同时安装 EMI 与官方 RS2 EMI 集成桥；Fabric Loader 会检查依赖，
+不会自动下载模组。EZ2RS 的元数据只直接声明集成桥，EMI 由集成桥的依赖声明要求。
 
 ## 构建
 
@@ -85,6 +91,8 @@ RS2 的 Fabric 产物来自 CreeperHost maven（`https://maven.creeperhost.net`�
 走 maven 坐标时 loom 不会重映射，dev 运行时 loader 会认为没装这个模组。
 RS2 自身的运行期依赖（cloth-config、team reborn energy）在正式环境由 RS2 jar 内的嵌套 jar 提供，
 但 dev 运行需要显式声明，`build.gradle` 里已作为 `modImplementation` 加上（不会打进本模组的 jar）。
+EMI 与官方集成桥也作为开发依赖解析，版本分别固定为 `1.1.22+1.21.1` 和 `1.0.0`；
+它们同样不会嵌入 EZ2RS 的发布 jar。
 
 ---
 
@@ -154,40 +162,26 @@ RS2 自身的运行期依赖（cloth-config、team reborn energy）在正式环�
 **三种现成无线终端的切换**直接委托给 RS2 / 石英兵工厂自己的无线物品
 （`Items.INSTANCE.getWirelessGrid().use(...)`），权限检查、网络绑定、菜单与界面全部复用。
 
-**样板网格是唯一需要自己接的**，因为 RS2 把它的状态几乎全绑在 `PatternGridBlockEntity` 上。
-`WirelessPatternGridContainerMenu` 继承 `PatternGridContainerMenu`，用它那个「本来给客户端用」的
-GridData 构造器在双端各建一套容器，这样 RS2 的界面、槽位布局、C2S 包全部原样复用。
-剩下的都是把断掉的链路补回来：
+无线样板终端采用 **RS2 原生状态对象 + 无线网络适配**：
 
-- `Ez2rsPatternGridBridge`（放在 RS2 的包下）：访问包私有的 `ProcessingInputData` /
-  `ProcessingMatrixInputResourceContainer` / `StonecutterInputContainer` / `PatternGridPropertyTypes`。
-  **access widener 帮不上忙**——它只对游戏类生效，不放宽第三方模组。
-- `Ez2rsGridBridge`（放在 RS2 的 grid 包下）：构造包私有的 `WirelessGrid`，
-  让无线菜单有真正的网络来源。
-- `AbstractGridContainerMenuMixin`：把 Grid 挂到已经构造好的菜单上（watcher + `initStrategies`）。
-  通过 `GridAttachable` 接口对外暴露——mixin 类不能在普通代码里直接引用（`IllegalClassloadError`）。
-- 覆写 `getType()` 返回自己的菜单类型。父类构造器把它定死成 RS2 的样板网格类型，
-  而 Fabric 按 `getType()` 选数据 codec，不改就会拿 `PatternGridData` 的 codec 去编码我们的数据。
-- 覆写 `stillValid()` 恒为 `true`。父类用 `grid.canMenuStayOpen(player)` 做方块距离校验，
-  无线版没有方块，界面会开一个 tick 就关。
-- 覆写 `receivePropertyChangeFromClient()`。父类无条件把属性强转 `ServerProperty`，
-  而我们注册的是 `ClientProperty`。样板类型 / 模糊模式 / 切石机选中项在这里显式写回。
-- 覆写 `broadcastChanges()`：草稿快照变了就重算配方；并**自己**推一遍资源槽位
-  （父类那份会因为构造路径没传 player 而整段跳过）。
+- 服务端创建一个未放置的 `PatternGridBlockEntity` 子类，作为样板编辑状态的载体。
+  它持有世界引用用于配方与注册表查询，但不会注册进区块、方块实体表、ticker 或 RS 网络。
+  `setChanged()` 仅记录物品草稿变化，不调用区块保存或方块更新。
+- 服务端菜单通过同包桥接调用 RS2 的方块实体构造器；客户端仍使用原生快照构造器。
+  四类样板编码、结果计算、已编码样板回填、Clear、属性和资源槽同步全部复用 RS2。
+  不再用客户端构造器模拟服务端，也不再复制四套配方填充和编码实现。
+- 网络资源、权限、存取操作和能量消耗基于 RS2 的 `WirelessGrid` / `NetworkItemContext`。
+  无线适配层维护监听器的绑定与释放，并处理网络失效、恢复时的资源刷新。
+- 原生转移逻辑通过小范围排序上下文适配读取无线网络库存和可合成输出；
+  其余普通方块样板终端继续使用原来的网络节点。
+- EMI 按菜单类型注册处理器。我们为无线菜单注册官方集成桥的原生样板处理器，
+  直接复用它的配方、数量、流体和提示转换，Fill Recipe 由原生 C2S 包交给服务端状态执行。
+- 菜单保留自己的类型及打开数据 codec，保护手持终端槽位，并把草稿写回当前物品。
+  旧草稿键保持可读，新增切石机选中配方字段；处理输入的备选标签配置按原生容器格式保存。
 
-几个踩过的坑，记在这里免得重犯：
-
-- `StreamCodec.unit(instance)` 要求编码对象与预设实例**引用相同**，我们自己反序列化出来的
-  配方是另一个实例，同步配方时直接崩。配方无字段，写一个不写字节的 codec 即可。
-- 原版 `TransientCraftingContainer.setChanged()` 是**空实现**，所以 `slotsChanged` 永远不会来；
-  方块版是自己给 `RecipeMatrixContainer` 传了 listener 才有通知链。
-- `AbstractResourceContainerMenu` 的 `player` 是构造器传入的 final 字段，
-  我们这条构造路径传不进去，它因此是 null，资源槽位广播被整段跳过。
-- 客户端调 `RecipeMatrix.updateResult` 会直接 return，`getResult()` 是空的；
-  把这个空值写回容器会覆盖服务端刚同步下来的结果（表现为「放完不显示、重开才有」）。
-- `AbstractContainerMenu.setData` 按 DataSlot 下标取列表，服务端与客户端的槽位数必须一致。
-  用 `registerProperty` 追加属性会同时追加 DataSlot，两端数量不同就会
-  `IndexOutOfBoundsException`。
+网络不可用时，网络资源区为空、不可进行网络操作，已有样板草稿保留并进入只读状态。
+重新打开或恢复有效连接后按当前网络状态刷新。内部实现针对上表列出的版本核对；
+元数据中的较宽 RS2 版本区间不代表其他版本已经过测试。
 
 ### 电力
 
@@ -203,8 +197,9 @@ GridData 构造器在双端各建一套容器，这样 RS2 的界面、槽位布
 - 功能 3：24 张底图与 148 张 sprite 逐张比对过；覆盖机制确认
   （`grid.png source pack = ez2rs:ae2_gui`）。
 - 功能 4：三个终端切换在实机跑过，界面正常渲染。
-- 功能 5：合成 / 处理 / 切石机 / 锻造四种样板的编码、类型切换、Clear、自动回填、
-  网络存取与草稿持久化，均由使用方逐项实测通过。
+- 功能 5：重构前，使用方已反馈四类样板编码、类型切换、Clear、网络存取和 EMI 拖放可用；
+  EMI Fill Recipe 曾出现按钮可点击但填充失败。重构后的完整交互仍需游戏内回归验证，
+  构建成功不代表这些交互已经实测通过。
 
 ## 关于 RS2 的副产品
 

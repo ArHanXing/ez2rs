@@ -10,9 +10,9 @@ import net.minecraft.network.codec.StreamCodec;
 /**
  * 无线样板终端打开菜单时下发的数据：样板网格数据 + 终端物品所在槽位。
  *
- * <p>手写编解码而不是用 {@code StreamCodec.composite}：composite 在泛型擦除后
- * 会把组合中的 {@link PatternGridData} 当作最终类型去强转，导致发包时
- * "WirelessPatternGridData cannot be cast to PatternGridData"。</p>
+ * <p>保留显式编解码以清楚展示两部分的线格式；正确使用的
+ * {@code StreamCodec.composite} 同样有效。菜单必须通过自己的 getType()
+ * 选择本 codec，不能误用原生 PatternGridData 的菜单 codec。</p>
  */
 public record WirelessPatternGridData(PatternGridData patternGridData, SlotReference slotReference) {
     public static final StreamCodec<RegistryFriendlyByteBuf, WirelessPatternGridData> STREAM_CODEC =

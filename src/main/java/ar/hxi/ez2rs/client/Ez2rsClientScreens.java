@@ -15,6 +15,17 @@ public final class Ez2rsClientScreens {
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     public static void register() {
+        net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.registerGlobalReceiver(
+            ar.hxi.ez2rs.net.PatternGridSnapshotPacket.TYPE, (payload, context) ->
+                context.client().execute(() -> {
+                    final var client = context.client();
+                    // The player's current menu is authoritative even while the pattern preview overlays its screen.
+                    if (client.player != null && client.screen != null
+                        && client.player.containerMenu instanceof WirelessPatternGridContainerMenu menu
+                        && menu.containerId == payload.containerId()) {
+                        payload.apply(menu);
+                    }
+                }));
         // 用父类作为泛型参数：这样同一个界面可以同时服务 RS2 自己的菜单和我们的子类。
         MenuScreens.register(
             (net.minecraft.world.inventory.MenuType) Ez2rsMenus.wirelessPatternGrid(),

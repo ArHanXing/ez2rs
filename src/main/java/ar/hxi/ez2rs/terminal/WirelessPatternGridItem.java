@@ -16,8 +16,8 @@ import net.minecraft.world.item.ItemStack;
 /**
  * 独立的「无线样板终端」。
  *
- * <p>通用终端也能带着样板页（与方块版样板终端合成解锁），但如果你只想随身带一个
- * 样板编码器，可以合成这个专用物品。两者打开的是同一个界面、共用同一套草稿组件。</p>
+ * <p>与本物品合成可解锁通用终端的样板页。两者使用同一套原生样板界面与草稿格式，
+ * 草稿内容分别保存在当前终端物品中。</p>
  */
 public class WirelessPatternGridItem extends AbstractNetworkEnergyItem {
     public WirelessPatternGridItem() {

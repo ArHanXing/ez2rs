@@ -54,7 +54,21 @@ public final class PatternGridDraft {
     }
 
     public static PatternType patternType(final CompoundTag tag) {
-        return PatternType.valueOf(tag.getString(PATTERN_TYPE));
+        try {
+            return PatternType.valueOf(tag.getString(PATTERN_TYPE));
+        } catch (IllegalArgumentException e) {
+            return PatternType.CRAFTING;
+        }
+    }
+
+    private static final String STONECUTTER_SELECTED = "stonecutter_selected_recipe";
+
+    public static int stonecutterSelected(final CompoundTag tag) {
+        return tag.contains(STONECUTTER_SELECTED) ? tag.getInt(STONECUTTER_SELECTED) : -1;
+    }
+
+    public static void setStonecutterSelected(final CompoundTag tag, final int selected) {
+        tag.putInt(STONECUTTER_SELECTED, selected);
     }
 
     public static boolean fuzzy(final CompoundTag tag) {
