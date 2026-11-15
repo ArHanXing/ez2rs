@@ -16,5 +16,6 @@
   "gui.ez2rs.universal_terminal.type.pattern_grid": "Pattern Grid",
   "item.ez2rs.wireless_pattern_grid": "Wireless Pattern Terminal",
   "item.ez2rs.wireless_autocrafter_manager": "Wireless Autocrafter Manager",
-  "gui.ez2rs.universal_terminal.type.autocrafter_manager": "Autocrafter Manager"
+  "gui.ez2rs.universal_terminal.type.autocrafter_manager": "Autocrafter Manager",
+  "key.ez2rs.open_universal_terminal": "Open universal terminal"
 }
