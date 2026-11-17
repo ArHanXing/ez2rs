@@ -16,6 +16,7 @@ import com.refinedmods.refinedstorage.fabric.api.RefinedStoragePlugin;
 import com.refinedmods.refinedstorage.fabric.support.energy.EnergyStorageAdapter;
 
 import net.fabricmc.api.ModInitializer;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.itemgroup.v1.ItemGroupEvents;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
@@ -67,6 +68,10 @@ public class Ez2rs implements ModInitializer, RefinedStoragePlugin {
     @Override
     public void onInitialize() {
         bootstrap();
+        // 无限存储方块配置里的资源 id 要等所有模组注册完物品才能查表（见 InfiniteStorageResources）。
+        // 这里只挂监听、不做任何解析：lambda 体里的 invokestatic 是延迟链接的，
+        // 注册这个监听器本身不会加载任何 RS2 或 MC 注册表类。
+        ServerLifecycleEvents.SERVER_STARTED.register(server -> InfiniteStorageContent.resolveResources());
     }
 
     /** RS2 {@code refinedstorage_plugin} 入口：此时 RS2 的 API 代理已经装好。 */

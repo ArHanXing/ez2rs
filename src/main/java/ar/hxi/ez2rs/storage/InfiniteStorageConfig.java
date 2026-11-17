@@ -10,7 +10,6 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 
 import com.google.gson.JsonArray;
@@ -19,14 +18,9 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
 import net.fabricmc.loader.api.FabricLoader;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.item.Item;
-import net.minecraft.world.item.Items;
-import net.minecraft.world.level.material.Fluid;
-import net.minecraft.world.level.material.Fluids;
 
 /**
  * 无限存储方块的配置文件。
@@ -40,6 +34,10 @@ import net.minecraft.world.level.material.Fluids;
  * 而且没有任何线索；直接崩并把行号无关的原因写进日志，反而是最好排查的形态。只有两种情况例外，
  * 它们都会 warn 后跳过而不是崩：单条资源 id 写错（跳过该资源）、条目同时给了 item 与 fluid
  * 或两者都空（跳过该条目）。</p>
+ *
+ * <p><b>资源 id 在这一步不查注册表</b>，只做语法解析，保存成字符串交给
+ * {@link InfiniteStorageResources} 延迟解析。原因见那个类的类注释：我们的注册时机比大多数模组早，
+ * 这时候查 {@code BuiltInRegistries} 必然失败（{@code techreborn:cell} 之类就是这种情况）。</p>
  *
  * <p>用手写 {@code JsonObject} 而不是 Gson 反射绑定：反射绑定会把字段名、null、缺省值、
  * {@code FieldNamingPolicy} 的行为都藏进注解里，出错时报的还是 {@code UnsupportedOperationException}，
@@ -59,14 +57,14 @@ public final class InfiniteStorageConfig {
      * @param name   显示名；方块实体（{@code Nameable#getName}）、方块与物品都用它，
      *               所以没有 lang 文件也能显示中文
      * @param kind   资源类型，决定用哪套 RS2 菜单 / 资源工厂
-     * @param items  物品型条目解析出的物品（流体型为空）
-     * @param fluids 流体型条目解析出的流体（物品型为空）
+     * @param items  物品 id 字符串（<b>尚未</b>查注册表，见 {@link InfiniteStorageResources}）
+     * @param fluids 流体 id 字符串（同上）
      */
     public record Entry(ResourceLocation id,
                         MutableComponent name,
                         Kind kind,
-                        List<Item> items,
-                        List<Fluid> fluids) {
+                        List<String> items,
+                        List<String> fluids) {
     }
 
     private static final String FILE_NAME = "ez2rs-infinite-storage.json";
@@ -190,8 +188,8 @@ public final class InfiniteStorageConfig {
             throw configError(path, "blocks[" + index + "].name must be a string");
         }
         final MutableComponent name = Component.literal(nameElement.getAsString());
-        final List<Item> items = parseItems(path, index, object.get("item"));
-        final List<Fluid> fluids = parseFluids(path, index, object.get("fluid"));
+        final List<String> items = parseResourceIds(path, index, "item", object.get("item"));
+        final List<String> fluids = parseResourceIds(path, index, "fluid", object.get("fluid"));
         if (!items.isEmpty() && !fluids.isEmpty()) {
             Ez2rs.LOGGER.warn(
                 "Skipping infinite storage block {}: it configures both item and fluid, write two entries instead",
@@ -204,35 +202,9 @@ public final class InfiniteStorageConfig {
             return null;
         }
         final Kind kind = items.isEmpty() ? Kind.FLUID : Kind.ITEM;
-        Ez2rs.LOGGER.info("Infinite storage block {} ({}) provides {} {} resource(s)",
+        Ez2rs.LOGGER.info("Infinite storage block {} ({}) configures {} {} resource id(s)",
             id, kind, items.size() + fluids.size(), kind);
-        return new Entry(id, name, kind, List.copyOf(items), List.copyOf(fluids));
-    }
-
-    private static List<Item> parseItems(final Path path, final int index, final JsonElement element) {
-        final List<Item> result = new ArrayList<>();
-        for (final String value : parseResourceIds(path, index, "item", element)) {
-            final Optional<Item> item = findItem(value);
-            if (item.isEmpty()) {
-                Ez2rs.LOGGER.warn("Infinite storage blocks[{}]: unknown item id \"{}\", skipped", index, value);
-                continue;
-            }
-            result.add(item.get());
-        }
-        return result;
-    }
-
-    private static List<Fluid> parseFluids(final Path path, final int index, final JsonElement element) {
-        final List<Fluid> result = new ArrayList<>();
-        for (final String value : parseResourceIds(path, index, "fluid", element)) {
-            final Optional<Fluid> fluid = findFluid(value);
-            if (fluid.isEmpty()) {
-                Ez2rs.LOGGER.warn("Infinite storage blocks[{}]: unknown fluid id \"{}\", skipped", index, value);
-                continue;
-            }
-            result.add(fluid.get());
-        }
-        return result;
+        return new Entry(id, name, kind, items, fluids);
     }
 
     /** 字段缺省 = 空列表；字段存在但不是字符串数组 = 配置写错，崩溃。 */
@@ -256,30 +228,6 @@ public final class InfiniteStorageConfig {
             result.add(value.getAsString());
         }
         return result;
-    }
-
-    /**
-     * {@code BuiltInRegistries.ITEM} 是 {@code DefaultedRegistry}：查不到的 id 会回落成 {@code air}
-     * 而不是 {@code null}，所以必须拿默认值判未知，只判 null 会把 {@code minecraft:not_a_thing}
-     * 静默变成一团空气。
-     */
-    private static Optional<Item> findItem(final String id) {
-        final ResourceLocation location = ResourceLocation.tryParse(id);
-        if (location == null) {
-            return Optional.empty();
-        }
-        final Item item = BuiltInRegistries.ITEM.get(location);
-        return item == null || item == Items.AIR ? Optional.empty() : Optional.of(item);
-    }
-
-    /** 同上：{@code BuiltInRegistries.FLUID} 的默认值是 {@code minecraft:empty}。 */
-    private static Optional<Fluid> findFluid(final String id) {
-        final ResourceLocation location = ResourceLocation.tryParse(id);
-        if (location == null) {
-            return Optional.empty();
-        }
-        final Fluid fluid = BuiltInRegistries.FLUID.get(location);
-        return fluid == Fluids.EMPTY ? Optional.empty() : Optional.of(fluid);
     }
 
     /** 既写日志又返回异常，调用处直接 {@code throw configError(...)}。 */

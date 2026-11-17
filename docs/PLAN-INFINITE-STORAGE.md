@@ -2,6 +2,32 @@
 
 状态：已定稿，待实现。作者：parent（A 阶段产出）。实现者（C）只需读本文件 + 按"文件清单"写代码，不需要重新调研 RS2。
 
+## 实施后的修正（实测暴露的问题，以此为准）
+
+**2026-11-17 修正：资源 id 必须延迟解析，不能在注册时查注册表。**
+
+原方案在 `InfiniteStorageConfig.load()` 里直接查 `BuiltInRegistries.ITEM/FLUID` 把 id 变成对象。
+实测失败：配置 `techreborn:cell` 报 `unknown item id "techreborn:cell"`，随后该条目因为
+"既没 item 也没 fluid"被整条跳过。原因是**注册时机**：`InfiniteStorageContent.register` 从
+`refinedstorage_plugin` 入口（RS2 `onInitialize` 末尾）调用，正式环境按 mod id 升序 →
+`"ez2rs" < "refinedstorage" < "techreborn"`，此刻 TechReborn 的物品还没注册。
+
+修正后的结构：
+
+- `InfiniteStorageConfig.Entry` 只保存 `List<String> items/fluids`（**不查表**）。
+  `kind` 由"哪个数组非空"决定——纯字符串判断，与注册表无关。
+- 新增 `InfiniteStorageResources`：`volatile Resolved` + 双检锁缓存，
+  `get()` 首次访问时才查 `BuiltInRegistries`，之后是字段读。
+  `Resolved` 持有 `contents`/`items`/`fluids`，并暴露 `accepts(ResourceKey)`。
+- `InfiniteStorageType` / `InfiniteStorage` 都只持有 `InfiniteStorageResources`，
+  在 `getAll()` / `isAllowed()` / `extract()` 里走 `resources.get()`。
+- `InfiniteStorageContent.resolveResources()` 在 `ServerLifecycleEvents.SERVER_STARTED` 里
+  预热一次，让"id 确实不存在"的 warn 出现在固定位置。该监听在 `Ez2rs.onInitialize` 注册，
+  lambda 体不加载任何 RS2/注册表类，仍然满足"onInitialize 不碰 RS2"的硬约束。
+
+于是一切自带物品的模组（无论 mod id 大小写排序）都能写进配置。下面"文件清单"第 1/2/3 条中
+关于"解析结果产出 Entry(…, List<ResourceKey>)"的描述已被本节取代。
+
 ## 目标
 
 给 EZ2RS 加一种**配置驱动的无限存储方块**：每个方块在 RS2 网络里永久提供配置中指定的若干物品或流体，数量视为无限（不消耗、不接受插入）。方块由 JSON 配置数组决定，玩家改配置即可新增/删除方块，不需要写代码、不需要写 blockstates/models JSON。

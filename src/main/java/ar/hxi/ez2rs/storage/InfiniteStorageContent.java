@@ -36,11 +36,18 @@ import net.minecraft.world.level.block.entity.BlockEntityType;
  *   <li>{@code BlockEntityType} —— 需要方块集合，所以必须最后注册；注册完再回填给 provider。
  *       方块实体只有在世界加载后才会被创建，那时类型早就就位了。</li>
  * </ol>
+ *
+ * <p><b>注意整个流程都不查询资源注册表。</b>这一步发生在 {@code refinedstorage_plugin} 入口，
+ * 比大多数模组的 {@code onInitialize} 都早（{@code "ez2rs" < "refinedstorage" < "techreborn"}），
+ * 此刻 {@code BuiltInRegistries.ITEM} 里还没有别人模组的物品。资源 id 只被原样保存进
+ * {@link InfiniteStorageResources}，等世界加载后才查表——这就是为什么配置里能写
+ * {@code techreborn:cell} 这种"比我们晚注册"的模组的物品。</p>
  */
 public final class InfiniteStorageContent {
     private static final List<Block> BLOCKS = new ArrayList<>();
     private static final List<Item> ITEMS = new ArrayList<>();
     private static final Set<ResourceLocation> ITEM_IDS = new HashSet<>();
+    private static final List<InfiniteStorageResources> RESOURCES = new ArrayList<>();
 
     private static boolean registered;
 
@@ -65,11 +72,26 @@ public final class InfiniteStorageContent {
             succeeded, entries.size() - succeeded);
     }
 
+    /**
+     * 在服务端 / 客户端启动完成后解析所有条目的资源 id。
+     *
+     * <p>严格来说不是必需的——{@link InfiniteStorageResources} 会在首次访问时自己解析。
+     * 提前跑一次只是为了让"某个 id 写错了"的 warn 出现在固定的位置，而不是在一次游戏内操作之后。</p>
+     */
+    public static void resolveResources() {
+        for (final InfiniteStorageResources resources : List.copyOf(RESOURCES)) {
+            resources.resolveEagerly();
+        }
+    }
+
     /** @return 是否成功；单条失败只 warn 并跳过，不能让整批注册连带崩掉 */
     private static boolean registerEntry(final RefinedStorageApi api, final InfiniteStorageConfig.Entry entry) {
         try {
+            // 0. 延迟解析器：只保存 id 字符串，不查注册表（见类注释）。
+            final InfiniteStorageResources resources =
+                new InfiniteStorageResources(entry.id(), entry.items(), entry.fluids());
             // 1. storage type：进 RS2 的注册表，否则存档序列化时找不到 codec。
-            final InfiniteStorageType type = new InfiniteStorageType(entry.id(), entry.items(), entry.fluids());
+            final InfiniteStorageType type = new InfiniteStorageType(entry.id(), resources);
             api.getStorageTypeRegistry().register(entry.id(), type);
             // 2. provider：只持有 type 与显示名，方块实体类型稍后回填。
             final InfiniteStorageProvider provider =
@@ -96,6 +118,7 @@ public final class InfiniteStorageContent {
             BLOCKS.add(block);
             ITEMS.add(item);
             ITEM_IDS.add(entry.id());
+            RESOURCES.add(resources);
             Ez2rs.LOGGER.info("Registered infinite storage block {} ({})", entry.id(), entry.kind());
             return true;
         } catch (final RuntimeException e) {

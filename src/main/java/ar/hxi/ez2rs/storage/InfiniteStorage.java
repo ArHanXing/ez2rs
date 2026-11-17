@@ -6,18 +6,15 @@ import com.refinedmods.refinedstorage.api.resource.ResourceKey;
 import com.refinedmods.refinedstorage.api.storage.Actor;
 import com.refinedmods.refinedstorage.common.api.storage.SerializableStorage;
 import com.refinedmods.refinedstorage.common.api.storage.StorageType;
-import com.refinedmods.refinedstorage.common.support.resource.FluidResource;
-import com.refinedmods.refinedstorage.common.support.resource.ItemResource;
 
 import java.util.Collection;
-import java.util.List;
-import java.util.Set;
-
-import net.minecraft.world.item.Item;
-import net.minecraft.world.level.material.Fluid;
 
 /**
  * "无限"存储：对配置里的每个资源永久提供 {@link #INFINITE} 的数量，不消耗、不接受插入。
+ *
+ * <p>资源列表来自 {@link InfiniteStorageResources}，是<b>延迟解析</b>的（原因见那个类的注释：
+ * 我们的注册时机早于其它模组注册物品）。这里每次调用都走 {@code resources.get()}，
+ * 首次之后它就是一次 volatile 字段读 + 缓存命中，放在网络每 tick 的查询路径上也没有性能问题。</p>
  *
  * <p><b>为什么数量是 1e12。</b>不能用 {@code Long.MAX_VALUE}：RS2 的
  * {@code MutableResourceListImpl.Entry.increment} 没有溢出检查，同网络上另一个存储插入同一资源时
@@ -50,33 +47,25 @@ public final class InfiniteStorage implements SerializableStorage {
     public static final long INFINITE = 1_000_000_000_000L;
 
     private final StorageType type;
-    private final Collection<ResourceAmount> contents;
-    private final Set<Item> items;
-    private final Set<Fluid> fluids;
+    private final InfiniteStorageResources resources;
     private final Runnable markChanged;
 
     /**
-     * @param contents 构造时就算好的资源列表（数量统一是 {@link #INFINITE}），构造后不可变
-     * @param items    配置里的物品；{@code isAllowed} 按物品身份判断，因此带任意数据组件的
-     *                 同种物品（附魔书、带损伤的工具、装着内容的桶）也算命中
-     * @param fluids   配置里的流体，判断方式同上
+     * @param type        用于 {@link #getType()}，存档 codec 靠它分派
+     * @param resources   延迟解析的资源来源，见 {@link InfiniteStorageResources}
      * @param markChanged RS2 的"存储内容变了"回调；我们其实永不变化，仅在抽取时按约定通知一次
      */
     public InfiniteStorage(final StorageType type,
-                           final Collection<ResourceAmount> contents,
-                           final Set<Item> items,
-                           final Set<Fluid> fluids,
+                           final InfiniteStorageResources resources,
                            final Runnable markChanged) {
         this.type = type;
-        this.contents = List.copyOf(contents);
-        this.items = Set.copyOf(items);
-        this.fluids = Set.copyOf(fluids);
+        this.resources = resources;
         this.markChanged = markChanged;
     }
 
     @Override
     public Collection<ResourceAmount> getAll() {
-        return this.contents;
+        return this.resources.get().contents();
     }
 
     /** 永远返回 0：见类注释里 {@code removeIfEmpty} 的说明，这是刻意的，不是 bug。 */
@@ -100,7 +89,7 @@ public final class InfiniteStorage implements SerializableStorage {
                         final long amount,
                         final Action action,
                         final Actor actor) {
-        if (!this.accepts(resource)) {
+        if (!this.resources.get().accepts(resource)) {
             return 0;
         }
         if (action == Action.EXECUTE) {
@@ -112,25 +101,5 @@ public final class InfiniteStorage implements SerializableStorage {
     @Override
     public StorageType getType() {
         return this.type;
-    }
-
-    /**
-     * 按"物品/流体身份"而不是 {@code ResourceKey.equals} 判断：配置里给的是
-     * {@code new ItemResource(item)}（数据组件为空），而网络上流动的资源可能带组件，
-     * 严格相等会把同一件物品的变体当成未知资源。
-     */
-    private boolean accepts(final ResourceKey resource) {
-        return accepts(resource, this.items, this.fluids);
-    }
-
-    /** {@link InfiniteStorageType#isAllowed} 与抽取判定共用同一套规则，避免两处判据漂移。 */
-    static boolean accepts(final ResourceKey resource, final Set<Item> items, final Set<Fluid> fluids) {
-        if (resource instanceof ItemResource itemResource) {
-            return items.contains(itemResource.item());
-        }
-        if (resource instanceof FluidResource fluidResource) {
-            return fluids.contains(fluidResource.fluid());
-        }
-        return false;
     }
 }
