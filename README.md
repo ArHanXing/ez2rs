@@ -61,6 +61,27 @@ Refined Storage 2 的附属模组（Fabric 1.21.1）。
 
 ![无线样板终端](docs/standalone-pattern-terminal.png)
 
+### 6. 样板数量快速乘除（×2 ×3 ×5 ×7 / ÷2 ÷3 ÷5 ÷7）
+
+处理样板里往往要填「这个原料一次要几个」。手点数量界面一格一格改很慢，
+所以样板终端右侧多了一列按钮，点一下就把**所有已填写的处理输入与输出**同时缩放：
+
+| 按钮 | 效果 |
+|---|---|
+| ×2 / ×3 / ×5 / ×7 | 每一格数量乘以对应因子 |
+| ÷2 / ÷3 / ÷5 / ÷7 | 每一格数量除以对应因子 |
+
+- **只对处理样板生效**：合成 / 切石机 / 锻造的原料数量在 RS2 里恒为 1
+  （`PatternResolver` 对它们硬编码 `Ingredient(1, ...)`），缩放没有意义，
+  所以那三种模式下按钮直接隐藏。
+- **方块版与无线版同时可用**：两个终端共用同一个界面类，一次注入两边都有。
+- **除法是四舍五入且下限为 1**，不是「除不尽就放弃」。参考模组
+  （[Pattern-Encoding-Terminal-Quick-Math](https://github.com/oritong/Pattern-Encoding-Terminal-Quick-Math)）
+  在除不尽时整次操作作废，这里改成四舍五入，避免玩家一路除下去把整行原料除没。
+- **乘法上限由 RS2 自己夹**：物品夹到堆叠上限、流体夹到桶容量 ×64，
+  与手动输入数量时的上限完全一致。
+- 配置过的「备选原料」标签在缩放后**保持不变**（原生数量输入会清掉它们，这里补回去了）。
+
 ## 版本
 
 | 项 | 值 |
@@ -155,9 +176,27 @@ EMI 与官方集成桥也作为开发依赖解析，版本分别固定为 `1.1.2
 
 ### 功能 4 / 5：通用终端与无线样板终端
 
+**初始化分两阶段**，这是本模组唯一和加载时序相关的硬约束：
+
+| 阶段 | 入口 | 做什么 |
+|---|---|---|
+| 1 | Fabric `main` → `Ez2rs#onInitialize` | 只注册数据组件（完全不碰 RS2 的类） |
+| 2 | RS2 `refinedstorage_plugin` → `Ez2rs#onApiAvailable` | 菜单、配方序列化器、网络包、物品、能量、创造栏 |
+
+原因：`RefinedStorageApi.INSTANCE` 是代理，delegate 要到 RS2 自己的 `ModInitializerImpl#onInitialize`
+里调用 `initializePlatformApi()` 时才装上去；在那之前碰任何 RS2 编解码器都会抛
+`IllegalStateException: API not loaded yet`。而 Fabric 的 `main` 入口按**模组顺序**逐个调用，
+开发环境里 `FabricLoaderImpl` 会 `Collections.shuffle(modCandidates)`，谁先跑每次都不一样。
+（正式环境按 mod id 升序，`"ez2rs" < "refinedstorage"`，我们永远先跑——所以只把逻辑放对不够，
+必须靠 `refinedstorage_plugin` 入口来兜底正确的时机。）
+
+一旦抢跑，`ResourceCodecs` 的类初始化会被永久标记为失败，RS2 随后在 `StorageTypes.<clinit>`
+抛 `NoClassDefFoundError`，整条启动链彻底崩且无法重试。
+`./gradlew runClient` 可加 `-Dfabric.debug.disableModShuffle` 复现/排除顺序问题。
+
 内容注册走 RS2 的 `refinedstorage_plugin` 入口（`Ez2rs#onApiAvailable`），
-因为物品必须进 RS2 已经准备好的注册表；数据组件、菜单、配方、网络包在 `bootstrap()` 里做，
-用标志位保证两处入口只执行一次。
+因为物品必须进 RS2 已经准备好的注册表；数据组件在 `onInitialize` 注册，
+菜单 / 配方 / 网络包在 `onApiAvailable` 里注册，两处都用标志位保证只执行一次。
 
 **三种现成无线终端的切换**直接委托给 RS2 / 石英兵工厂自己的无线物品
 （`Items.INSTANCE.getWirelessGrid().use(...)`），权限检查、网络绑定、菜单与界面全部复用。
@@ -189,6 +228,26 @@ EMI 与官方集成桥也作为开发依赖解析，版本分别固定为 `1.1.2
 网络可达时 `isActive()` 用网络电量、`drainEnergy()` 从网络扣，跳过物品内部电池；
 网络不可达则回退到原逻辑。只对本模组的物品生效。
 
+### 功能 6：快速乘除
+
+- 客户端：`ar.hxi.ez2rs.mixin.PatternGridScreenQuickMathMixin` 注入 `PatternGridScreen#init()`
+  的 `TAIL`，用 Fabric 的 `Screens#getButtons` 往面板右边缘外挂 8 个 `QuickMathButton`
+  （RS2 的 `AbstractSideButtonWidget` 子类，18×18 底图 + 16×16 自绘图标，
+  贴图在 `assets/ez2rs/textures/gui/sprites/quick_math/`）。
+  按钮同时登记进 `getExclusionZones()`，EMI 的配方面板据此避开这一列。
+- 服务端：`QuickMathPacket`（C2S，只带一个 `VAR_INT` 因子）交给
+  `Ez2rsQuickMathBridge#applyFactor`，遍历 `menu.getResourceSlots()` 中
+  `canModifyAmount()` 且非空的槽（在样板终端里就是处理矩阵槽），
+  调用与原生数量界面同一条 `ResourceSlot#changeAmount(long)`。
+- 为什么服务端<b>不</b>判断样板类型：服务端的同名字段是 `ServerProperty`，`getValue()` 会抛
+  `UnsupportedOperationException`；而且没有必要——合成 / 切石 / 锻造的原料根本不在
+  `ResourceSlot` 里带着数量，遍历到的只会是处理矩阵槽。
+- 备选原料：`ProcessingMatrixInputResourceContainer#setSilently` 会把 `allowedTagIds[index]`
+  重置为空集，所以 `applyFactor` 先快照、缩放后原样写回，玩家配置的备选标签不会丢。
+- 无线终端：额外走 `WirelessPatternGridContainerMenu#ez2rs$acceptsQuickMath()` 的
+  `canEdit()` 闸门，断网或已关闭时拒绝写入，与其它写操作一致。
+- 自绘贴图没有复用参考模组的任何素材（其许可为 GPLv3），墨色 `(58,58,58)` 对齐 RS2 图标。
+
 ## 已验证
 
 - 功能 1：dev 服务端实机跑过，mixin 正常应用；构造 `[toCraft=3, missing=7, toCraft=1, missing=2]`
@@ -200,6 +259,9 @@ EMI 与官方集成桥也作为开发依赖解析，版本分别固定为 `1.1.2
 - 功能 5：重构前，使用方已反馈四类样板编码、类型切换、Clear、网络存取和 EMI 拖放可用；
   EMI Fill Recipe 曾出现按钮可点击但填充失败。重构后的完整交互仍需游戏内回归验证，
   构建成功不代表这些交互已经实测通过。
+- 功能 6：编译通过，mixin 注入点与描述符在产物 jar 里核对过
+  （`init()V` → `method_25426()V`、`containerTick()V` → `method_37432()V`、
+  `patternTypeChanged` 保持 `remap = false`）；**游戏内点击效果仍需实测**。
 
 ## 关于 RS2 的副产品
 

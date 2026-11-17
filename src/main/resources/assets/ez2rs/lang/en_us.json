@@ -17,5 +17,15 @@
   "item.ez2rs.wireless_pattern_grid": "Wireless Pattern Terminal",
   "item.ez2rs.wireless_autocrafter_manager": "Wireless Autocrafter Manager",
   "gui.ez2rs.universal_terminal.type.autocrafter_manager": "Autocrafter Manager",
-  "key.ez2rs.open_universal_terminal": "Open universal terminal"
+  "key.ez2rs.open_universal_terminal": "Open universal terminal",
+  "gui.ez2rs.quick_math.help": "Scales every filled processing input and output",
+  "gui.ez2rs.quick_math.desc": "Processing patterns only",
+  "gui.ez2rs.quick_math.multiply_2": "Multiply by 2",
+  "gui.ez2rs.quick_math.multiply_3": "Multiply by 3",
+  "gui.ez2rs.quick_math.multiply_5": "Multiply by 5",
+  "gui.ez2rs.quick_math.multiply_7": "Multiply by 7",
+  "gui.ez2rs.quick_math.divide_2": "Divide by 2",
+  "gui.ez2rs.quick_math.divide_3": "Divide by 3",
+  "gui.ez2rs.quick_math.divide_5": "Divide by 5",
+  "gui.ez2rs.quick_math.divide_7": "Divide by 7"
 }

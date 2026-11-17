@@ -17,5 +17,15 @@
   "item.ez2rs.wireless_pattern_grid": "无线样板终端",
   "item.ez2rs.wireless_autocrafter_manager": "无线自动合成仓管理终端",
   "gui.ez2rs.universal_terminal.type.autocrafter_manager": "自动合成仓管理终端",
-  "key.ez2rs.open_universal_terminal": "打开通用终端"
+  "key.ez2rs.open_universal_terminal": "打开通用终端",
+  "gui.ez2rs.quick_math.help": "缩放所有已填写的处理样板输入与输出",
+  "gui.ez2rs.quick_math.desc": "仅对处理样板有效",
+  "gui.ez2rs.quick_math.multiply_2": "乘以 2",
+  "gui.ez2rs.quick_math.multiply_3": "乘以 3",
+  "gui.ez2rs.quick_math.multiply_5": "乘以 5",
+  "gui.ez2rs.quick_math.multiply_7": "乘以 7",
+  "gui.ez2rs.quick_math.divide_2": "除以 2",
+  "gui.ez2rs.quick_math.divide_3": "除以 3",
+  "gui.ez2rs.quick_math.divide_5": "除以 5",
+  "gui.ez2rs.quick_math.divide_7": "除以 7"
 }

@@ -53,6 +53,15 @@ public final class WirelessPatternGridContainerMenu extends Ez2rsNativePatternGr
         return !closed && (state == null ? isActive() : state.isWritable());
     }
 
+    /**
+     * Quick-math writes arrive through a dedicated C2S packet, not through the native
+     * amount-change packet, so they must re-apply the same offline / closed gate here.
+     */
+    @Override
+    public boolean ez2rs$acceptsQuickMath() {
+        return canEdit();
+    }
+
     public void flushDraft() {
         if (wirelessState() != null) wirelessState().saveDraft();
     }

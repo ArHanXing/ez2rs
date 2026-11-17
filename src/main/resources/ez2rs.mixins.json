@@ -17,6 +17,7 @@
   "client": [
     "AbstractGridScreenMixin",
     "AutocraftingMonitorScreenMixin",
-    "AutocrafterManagerScreenMixin"
+    "AutocrafterManagerScreenMixin",
+    "PatternGridScreenQuickMathMixin"
   ]
 }

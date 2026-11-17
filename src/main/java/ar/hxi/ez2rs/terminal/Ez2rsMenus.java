@@ -23,6 +23,10 @@ public final class Ez2rsMenus {
     }
 
     public static void register() {
+        // 这里的每一个 codec 都会在构造时解引用 RS2 的静态编解码器
+        // （PatternGridData.STREAM_CODEC → GridData.STREAM_CODEC → ResourceCodecs →
+        // RefinedStorageApi.INSTANCE）。代理在 RS2 的 initializePlatformApi() 之前是空的，
+        // 所以本方法只能从 refinedstorage_plugin 入口调用，不能从 Fabric 的 main 入口调用。
         ar.hxi.ez2rs.net.PatternGridSnapshotPacket.register();
         // 显式声明成 StreamCodec<RegistryFriendlyByteBuf, WirelessPatternGridData>，
         // 否则 ExtendedScreenHandlerType 会把数据按擦除后的类型编码，

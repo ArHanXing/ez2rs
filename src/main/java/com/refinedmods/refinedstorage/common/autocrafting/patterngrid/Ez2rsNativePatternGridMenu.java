@@ -41,6 +41,17 @@ public abstract class Ez2rsNativePatternGridMenu extends PatternGridContainerMen
             && slot.container.getContainerSize() == 1;
     }
 
+    /**
+     * Whether a server-side write may touch this menu's processing amounts.
+     *
+     * <p>Default allows it: a block pattern grid is authorized by its own network state, and RS2's
+     * amount-change packet has no extra policy either. The wireless terminal overrides this to
+     * enforce its offline / closed rule.</p>
+     */
+    public boolean ez2rs$acceptsQuickMath() {
+        return true;
+    }
+
     // Native slot callbacks read these methods AFTER construction. Native resized
     // only captures the callbacks; it does not invoke them during super(). Keep
     // subclass resized overrides equally safe before wirelessState is assigned.
