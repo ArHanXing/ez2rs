@@ -69,6 +69,8 @@ public class Ez2rsClient implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
         Ez2rsClientScreens.register();
+        // 动态注册的无限存储方块没有 blockstates/models JSON，模型全靠这个插件在内存里补。
+        InfiniteStorageModels.register();
         registerGuiPack();
         ScreenEvents.AFTER_INIT.register((client, screen, scaledWidth, scaledHeight) ->
             ScreenKeyboardEvents.allowKeyPress(screen).register((s, keyCode, scanCode, modifiers) ->

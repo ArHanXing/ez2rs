@@ -2,6 +2,7 @@ package ar.hxi.ez2rs;
 
 import ar.hxi.ez2rs.net.CycleUniversalTerminalPacket;
 import ar.hxi.ez2rs.net.QuickMathPacket;
+import ar.hxi.ez2rs.storage.InfiniteStorageContent;
 import ar.hxi.ez2rs.terminal.Ez2rsMenus;
 import ar.hxi.ez2rs.terminal.Ez2rsRecipes;
 import ar.hxi.ez2rs.terminal.Ez2rsTerminalContent;
@@ -21,6 +22,7 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import team.reborn.energy.api.EnergyStorage;
@@ -73,6 +75,9 @@ public class Ez2rs implements ModInitializer, RefinedStoragePlugin {
         bootstrap();
         initializeRefinedStorageHooks();
         registerContent();
+        // 无限存储方块：必须放在 registerContent 之后、创造栏监听之前。
+        // 它会往 RS2 的 storage type 注册表里写东西，那要求 RS2 的静态编解码器已经就绪。
+        InfiniteStorageContent.register(refinedStorageApi);
         registerEnergyProvider();
         registerCreativeModeTabListener(refinedStorageApi);
     }
@@ -146,6 +151,9 @@ public class Ez2rs implements ModInitializer, RefinedStoragePlugin {
             entries.accept(Ez2rsTerminalContent.getItem().createAtEnergyCapacity());
             entries.accept(Ez2rsTerminalContent.getPatternGridItem().createAtEnergyCapacity());
             entries.accept(Ez2rsTerminalContent.getAutocrafterManagerItem().createAtEnergyCapacity());
+            // 无限存储方块：条目由配置文件决定，数量与 id 都在运行时才知道。
+            // 创造栏的 accept 只收 ItemStack，所以这里要自己包一层。
+            InfiniteStorageContent.getItems().forEach(item -> entries.accept(new ItemStack(item)));
         });
     }
 }
